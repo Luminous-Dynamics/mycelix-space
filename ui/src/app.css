@@ -1,0 +1,138 @@
+/* Global styles for Mycelix Space Dashboard */
+
+* {
+	box-sizing: border-box;
+}
+
+html, body {
+	margin: 0;
+	padding: 0;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+	background: #0a0a0f;
+	color: #e0e0e0;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+	margin: 0 0 1rem 0;
+	font-weight: 600;
+}
+
+/* Cards */
+.card {
+	background: #12121a;
+	border: 1px solid #2a2a3a;
+	border-radius: 12px;
+	padding: 1.5rem;
+}
+
+/* Buttons */
+.btn {
+	padding: 0.75rem 1.5rem;
+	border: none;
+	border-radius: 8px;
+	font-size: 0.9rem;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.btn-primary {
+	background: #00d4ff;
+	color: #0a0a0f;
+}
+
+.btn-primary:hover {
+	background: #00b8e0;
+}
+
+.btn-danger {
+	background: #ff4444;
+	color: white;
+}
+
+.btn-danger:hover {
+	background: #dd3333;
+}
+
+/* Risk level badges */
+.risk-badge {
+	display: inline-block;
+	padding: 0.25rem 0.75rem;
+	border-radius: 4px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.risk-negligible { background: #2a2a3a; color: #888; }
+.risk-low { background: #22442244; color: #44ff88; }
+.risk-medium { background: #44440022; color: #ffcc00; }
+.risk-high { background: #44220022; color: #ff8844; }
+.risk-emergency { background: #44000044; color: #ff4444; }
+
+/* Tables */
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+th, td {
+	padding: 0.75rem 1rem;
+	text-align: left;
+	border-bottom: 1px solid #2a2a3a;
+}
+
+th {
+	color: #888;
+	font-weight: 500;
+	text-transform: uppercase;
+	font-size: 0.75rem;
+	letter-spacing: 0.5px;
+}
+
+tr:hover {
+	background: #1a1a2a;
+}
+
+/* Stats */
+.stat {
+	text-align: center;
+}
+
+.stat-value {
+	font-size: 2rem;
+	font-weight: 700;
+	color: #00d4ff;
+}
+
+.stat-label {
+	font-size: 0.8rem;
+	color: #888;
+	text-transform: uppercase;
+}
+
+/* Alerts */
+.alert {
+	padding: 1rem;
+	border-radius: 8px;
+	margin-bottom: 1rem;
+}
+
+.alert-warning {
+	background: #44330022;
+	border: 1px solid #ff884433;
+	color: #ff8844;
+}
+
+.alert-danger {
+	background: #44000022;
+	border: 1px solid #ff444433;
+	color: #ff4444;
+}
+
+/* Cesium container */
+#cesiumContainer {
+	width: 100%;
+	height: 100%;
+}
