@@ -247,14 +247,12 @@ pub fn genesis_self_check(_data: GenesisSelfCheckData) -> ExternResult<ValidateC
 pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
     match op.flattened::<EntryTypes, LinkTypes>()? {
         FlatOp::StoreEntry(store_entry) => match store_entry {
-            OpEntry::CreateEntry { app_entry, .. } => {
-                match app_entry {
-                    EntryTypes::DebrisBounty(bounty) => validate_bounty(&bounty),
-                    EntryTypes::BountyContribution(contrib) => validate_contribution(&contrib),
-                    EntryTypes::RemovalClaim(claim) => validate_claim(&claim),
-                    EntryTypes::RemovalVerification(verif) => validate_verification(&verif),
-                }
-            }
+            OpEntry::CreateEntry { app_entry, .. } => match app_entry {
+                EntryTypes::DebrisBounty(bounty) => validate_bounty(&bounty),
+                EntryTypes::BountyContribution(contrib) => validate_contribution(&contrib),
+                EntryTypes::RemovalClaim(claim) => validate_claim(&claim),
+                EntryTypes::RemovalVerification(verif) => validate_verification(&verif),
+            },
             _ => Ok(ValidateCallbackResult::Valid),
         },
         _ => Ok(ValidateCallbackResult::Valid),
@@ -265,21 +263,21 @@ fn validate_bounty(bounty: &DebrisBounty) -> ExternResult<ValidateCallbackResult
     // NORAD ID must be valid
     if bounty.debris_norad_id == 0 || bounty.debris_norad_id > 999999 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Invalid debris NORAD ID".to_string()
+            "Invalid debris NORAD ID".to_string(),
         ));
     }
 
     // Amount must be positive
     if bounty.amount == 0 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Bounty amount must be positive".to_string()
+            "Bounty amount must be positive".to_string(),
         ));
     }
 
     // Justification must not be empty
     if bounty.justification.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Justification cannot be empty".to_string()
+            "Justification cannot be empty".to_string(),
         ));
     }
 
@@ -289,7 +287,7 @@ fn validate_bounty(bounty: &DebrisBounty) -> ExternResult<ValidateCallbackResult
 fn validate_contribution(contrib: &BountyContribution) -> ExternResult<ValidateCallbackResult> {
     if contrib.amount == 0 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Contribution amount must be positive".to_string()
+            "Contribution amount must be positive".to_string(),
         ));
     }
 
@@ -299,13 +297,13 @@ fn validate_contribution(contrib: &BountyContribution) -> ExternResult<ValidateC
 fn validate_claim(claim: &RemovalClaim) -> ExternResult<ValidateCallbackResult> {
     if claim.organization.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Organization name cannot be empty".to_string()
+            "Organization name cannot be empty".to_string(),
         ));
     }
 
     if claim.mission_plan.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Mission plan cannot be empty".to_string()
+            "Mission plan cannot be empty".to_string(),
         ));
     }
 

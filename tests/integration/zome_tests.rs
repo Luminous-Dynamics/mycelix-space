@@ -7,8 +7,8 @@
 //! - Signal emission for alerts
 //! - Multi-agent scenarios
 
-use mycelix_space_shared::*;
 use chrono::Utc;
+use mycelix_space_shared::*;
 use std::collections::HashMap;
 
 /// Test that shared types serialize correctly for Holochain
@@ -236,7 +236,7 @@ fn test_bounty_entry_serialization() {
 #[test]
 fn test_norad_id_validation() {
     // Valid IDs
-    assert!(NoradId::new(25544).is_ok());  // ISS
+    assert!(NoradId::new(25544).is_ok()); // ISS
     assert!(NoradId::new(1).is_ok());
     assert!(NoradId::new(999999).is_ok());
 
@@ -427,11 +427,26 @@ fn test_alert_priority() {
     assert!(AlertPriority::High < AlertPriority::Critical);
 
     // Test from_risk_level
-    assert_eq!(AlertPriority::from_risk_level(RiskLevel::Negligible), AlertPriority::Info);
-    assert_eq!(AlertPriority::from_risk_level(RiskLevel::Low), AlertPriority::Low);
-    assert_eq!(AlertPriority::from_risk_level(RiskLevel::Medium), AlertPriority::Medium);
-    assert_eq!(AlertPriority::from_risk_level(RiskLevel::High), AlertPriority::High);
-    assert_eq!(AlertPriority::from_risk_level(RiskLevel::Emergency), AlertPriority::Critical);
+    assert_eq!(
+        AlertPriority::from_risk_level(RiskLevel::Negligible),
+        AlertPriority::Info
+    );
+    assert_eq!(
+        AlertPriority::from_risk_level(RiskLevel::Low),
+        AlertPriority::Low
+    );
+    assert_eq!(
+        AlertPriority::from_risk_level(RiskLevel::Medium),
+        AlertPriority::Medium
+    );
+    assert_eq!(
+        AlertPriority::from_risk_level(RiskLevel::High),
+        AlertPriority::High
+    );
+    assert_eq!(
+        AlertPriority::from_risk_level(RiskLevel::Emergency),
+        AlertPriority::Critical
+    );
 }
 
 /// Test ConjunctionAlert creation

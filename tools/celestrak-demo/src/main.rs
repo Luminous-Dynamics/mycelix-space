@@ -16,15 +16,18 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Duration, Utc};
 use clap::{Parser, Subcommand};
 use colored::*;
-use serde::Serialize;
+use holochain_client::{
+    HolochainClient, HolochainConfig, IngestionBatch, OrbitalObjectInput, StateVectorInput,
+    TleInput,
+};
 use orbital_mechanics::{
     conjunction::{ConjunctionAnalyzer, RiskLevel},
+    covariance::CovarianceMatrix,
     propagator::Propagator,
     state::{DataSource, OrbitalState, StateVector},
     tle::TwoLineElement,
-    covariance::CovarianceMatrix,
 };
-use holochain_client::{HolochainClient, HolochainConfig, IngestionBatch, OrbitalObjectInput, TleInput, StateVectorInput};
+use serde::Serialize;
 use std::collections::HashMap;
 
 /// CelesTrak base URL for GP data
@@ -125,14 +128,26 @@ fn main() -> Result<()> {
         Commands::FetchStarlink { limit } => fetch_starlink(limit)?,
         Commands::FetchDebris { limit } => fetch_debris(limit)?,
         Commands::Propagate { hours, step } => propagate_iss(hours, step)?,
-        Commands::Screen { threshold, debris_count } => screen_iss(threshold, debris_count)?,
+        Commands::Screen {
+            threshold,
+            debris_count,
+        } => screen_iss(threshold, debris_count)?,
         Commands::ConjunctionDemo => conjunction_demo()?,
-        Commands::Ingest { source, limit, conductor_url, dry_run } => {
+        Commands::Ingest {
+            source,
+            limit,
+            conductor_url,
+            dry_run,
+        } => {
             // Use tokio runtime for async operations
             let rt = tokio::runtime::Runtime::new()?;
             rt.block_on(ingest_data(&source, limit, &conductor_url, dry_run))?;
         }
-        Commands::Export { source, limit, output } => export_data(&source, limit, &output)?,
+        Commands::Export {
+            source,
+            limit,
+            output,
+        } => export_data(&source, limit, &output)?,
     }
 
     Ok(())
@@ -140,7 +155,10 @@ fn main() -> Result<()> {
 
 /// Fetch ISS TLE from CelesTrak
 fn fetch_iss() -> Result<()> {
-    println!("{}", "=== Fetching ISS TLE from CelesTrak ===".green().bold());
+    println!(
+        "{}",
+        "=== Fetching ISS TLE from CelesTrak ===".green().bold()
+    );
 
     let url = format!("{}?CATNR=25544&FORMAT=TLE", CELESTRAK_GP_URL);
     let response = reqwest::blocking::get(&url)
@@ -191,7 +209,12 @@ fn fetch_iss() -> Result<()> {
 
 /// Fetch Starlink TLEs
 fn fetch_starlink(limit: usize) -> Result<()> {
-    println!("{}", format!("=== Fetching {} Starlink TLEs ===", limit).green().bold());
+    println!(
+        "{}",
+        format!("=== Fetching {} Starlink TLEs ===", limit)
+            .green()
+            .bold()
+    );
 
     let url = format!("{}?GROUP=starlink&FORMAT=TLE", CELESTRAK_GP_URL);
     let response = reqwest::blocking::get(&url)
@@ -216,23 +239,28 @@ fn fetch_starlink(limit: usize) -> Result<()> {
 
             println!(
                 "{:5} | {} | Alt: {:.0} km | Inc: {:.1}°",
-                tle.norad_id,
-                name,
-                altitude,
-                tle.inclination_deg
+                tle.norad_id, name, altitude, tle.inclination_deg
             );
             count += 1;
         }
     }
 
-    println!("\n{} Starlink satellites fetched", count.to_string().green());
+    println!(
+        "\n{} Starlink satellites fetched",
+        count.to_string().green()
+    );
 
     Ok(())
 }
 
 /// Fetch debris TLEs
 fn fetch_debris(limit: usize) -> Result<()> {
-    println!("{}", format!("=== Fetching {} Debris Objects ===", limit).green().bold());
+    println!(
+        "{}",
+        format!("=== Fetching {} Debris Objects ===", limit)
+            .green()
+            .bold()
+    );
 
     // CelesTrak debris catalog (COSMOS 1408 debris from ASAT test)
     let url = format!("{}?GROUP=cosmos-1408-debris&FORMAT=TLE", CELESTRAK_GP_URL);
@@ -244,7 +272,10 @@ fn fetch_debris(limit: usize) -> Result<()> {
     let lines: Vec<&str> = response.lines().collect();
     let mut count = 0;
 
-    println!("\n{:<10} | {:<25} | {:>8} | {:>6}", "NORAD ID", "Name", "Alt (km)", "Inc");
+    println!(
+        "\n{:<10} | {:<25} | {:>8} | {:>6}",
+        "NORAD ID", "Name", "Alt (km)", "Inc"
+    );
     println!("{}", "-".repeat(60));
 
     for chunk in lines.chunks(3) {
@@ -262,10 +293,7 @@ fn fetch_debris(limit: usize) -> Result<()> {
 
             println!(
                 "{:<10} | {:<25} | {:>8.0} | {:>6.1}°",
-                tle.norad_id,
-                display_name,
-                altitude,
-                tle.inclination_deg
+                tle.norad_id, display_name, altitude, tle.inclination_deg
             );
             count += 1;
         }
@@ -278,7 +306,12 @@ fn fetch_debris(limit: usize) -> Result<()> {
 
 /// Propagate ISS position
 fn propagate_iss(hours: f64, step_minutes: f64) -> Result<()> {
-    println!("{}", format!("=== Propagating ISS for {} hours ===", hours).green().bold());
+    println!(
+        "{}",
+        format!("=== Propagating ISS for {} hours ===", hours)
+            .green()
+            .bold()
+    );
 
     // Fetch ISS TLE
     let url = format!("{}?CATNR=25544&FORMAT=TLE", CELESTRAK_GP_URL);
@@ -292,13 +325,15 @@ fn propagate_iss(hours: f64, step_minutes: f64) -> Result<()> {
     let tle = TwoLineElement::parse_lines(
         Some(lines[0].trim().to_string()),
         lines[1].trim(),
-        lines[2].trim()
+        lines[2].trim(),
     )?;
 
     let propagator = Propagator::from_tle(&tle)?;
 
-    println!("\n{:<8} | {:>10} | {:>10} | {:>10} | {:>8} | {:>8}",
-             "Time", "X (km)", "Y (km)", "Z (km)", "Alt (km)", "Speed");
+    println!(
+        "\n{:<8} | {:>10} | {:>10} | {:>10} | {:>8} | {:>8}",
+        "Time", "X (km)", "Y (km)", "Z (km)", "Alt (km)", "Speed"
+    );
     println!("{}", "-".repeat(70));
 
     let start = Utc::now();
@@ -313,9 +348,7 @@ fn propagate_iss(hours: f64, step_minutes: f64) -> Result<()> {
             let time_offset = (current - start).num_minutes();
             println!(
                 "{:>4} min | {:>10.1} | {:>10.1} | {:>10.1} | {:>8.1} | {:>6.2} km/s",
-                time_offset,
-                state.state.x, state.state.y, state.state.z,
-                alt, speed
+                time_offset, state.state.x, state.state.y, state.state.z, alt, speed
             );
         }
 
@@ -327,8 +360,15 @@ fn propagate_iss(hours: f64, step_minutes: f64) -> Result<()> {
 
 /// Screen ISS for close approaches
 fn screen_iss(threshold_km: f64, debris_count: usize) -> Result<()> {
-    println!("{}", format!("=== Screening ISS for conjunctions (threshold: {} km) ===",
-                          threshold_km).green().bold());
+    println!(
+        "{}",
+        format!(
+            "=== Screening ISS for conjunctions (threshold: {} km) ===",
+            threshold_km
+        )
+        .green()
+        .bold()
+    );
 
     // Fetch ISS TLE
     let iss_url = format!("{}?CATNR=25544&FORMAT=TLE", CELESTRAK_GP_URL);
@@ -341,7 +381,7 @@ fn screen_iss(threshold_km: f64, debris_count: usize) -> Result<()> {
     let iss_tle = TwoLineElement::parse_lines(
         Some(iss_lines[0].trim().to_string()),
         iss_lines[1].trim(),
-        iss_lines[2].trim()
+        iss_lines[2].trim(),
     )?;
 
     // Fetch debris TLEs
@@ -356,8 +396,10 @@ fn screen_iss(threshold_km: f64, debris_count: usize) -> Result<()> {
     let iss_state = iss_prop.propagate_to(now)?;
 
     println!("\n{}", "ISS current position:".cyan());
-    println!("  X: {:.1} km, Y: {:.1} km, Z: {:.1} km",
-             iss_state.state.x, iss_state.state.y, iss_state.state.z);
+    println!(
+        "  X: {:.1} km, Y: {:.1} km, Z: {:.1} km",
+        iss_state.state.x, iss_state.state.y, iss_state.state.z
+    );
     println!("  Altitude: {:.1} km", iss_state.state.altitude_km());
 
     println!("\n{}", "Screening against debris...".yellow());
@@ -392,10 +434,19 @@ fn screen_iss(threshold_km: f64, debris_count: usize) -> Result<()> {
     close_approaches.sort_by(|a, b| a.2.partial_cmp(&b.2).unwrap());
 
     if close_approaches.is_empty() {
-        println!("\n{}", "No close approaches found within threshold.".green());
+        println!(
+            "\n{}",
+            "No close approaches found within threshold.".green()
+        );
     } else {
-        println!("\n{} close approaches found:", close_approaches.len().to_string().red().bold());
-        println!("\n{:<10} | {:<25} | {:>12}", "NORAD ID", "Name", "Distance (km)");
+        println!(
+            "\n{} close approaches found:",
+            close_approaches.len().to_string().red().bold()
+        );
+        println!(
+            "\n{:<10} | {:<25} | {:>12}",
+            "NORAD ID", "Name", "Distance (km)"
+        );
         println!("{}", "-".repeat(55));
 
         for (name, norad_id, distance) in &close_approaches {
@@ -415,10 +466,10 @@ fn screen_iss(threshold_km: f64, debris_count: usize) -> Result<()> {
             };
 
             let display_name = if name.len() > 25 { &name[..25] } else { name };
-            println!("{:<10} | {:<25} | {:>12}",
-                     norad_id,
-                     display_name,
-                     colored_dist);
+            println!(
+                "{:<10} | {:<25} | {:>12}",
+                norad_id, display_name, colored_dist
+            );
         }
     }
 
@@ -435,21 +486,27 @@ fn conjunction_demo() -> Result<()> {
 
     // Create two hypothetical objects close together
     let primary = OrbitalState::new(
-        25544,  // ISS
+        25544, // ISS
         now,
         StateVector::new(6800.0, 0.0, 0.0, 0.0, 7.66, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([0.5, 0.5, 0.5, 0.001, 0.001, 0.001]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        0.5, 0.5, 0.5, 0.001, 0.001, 0.001,
+    ]));
 
     // Secondary 0.5 km away
     let secondary = OrbitalState::new(
-        99999,  // Hypothetical debris
+        99999, // Hypothetical debris
         now,
         StateVector::new(6800.5, 0.0, 0.0, 0.0, 7.66, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([1.0, 1.0, 1.0, 0.002, 0.002, 0.002]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        1.0, 1.0, 1.0, 0.002, 0.002, 0.002,
+    ]));
 
-    let analyzer = ConjunctionAnalyzer::new().with_hbr(20.0);  // 20m combined radius
+    let analyzer = ConjunctionAnalyzer::new().with_hbr(20.0); // 20m combined radius
     let assessment = analyzer.assess(&primary, &secondary);
 
     println!("\n{}", "Conjunction Assessment:".cyan());
@@ -457,15 +514,27 @@ fn conjunction_demo() -> Result<()> {
     println!("  Secondary NORAD ID: {}", assessment.secondary_norad_id);
     println!("  Time of Closest Approach: {}", assessment.tca);
     println!("  Miss Distance: {:.3} km", assessment.miss_distance_km);
-    println!("  Relative Velocity: {:.3} km/s", assessment.relative_velocity_kms);
+    println!(
+        "  Relative Velocity: {:.3} km/s",
+        assessment.relative_velocity_kms
+    );
     println!("  Hard Body Radius: {:.1} m", assessment.hard_body_radius_m);
 
     println!("\n{}", "Collision Probability:".yellow());
     println!("  Pc: {:.2e}", assessment.collision_probability.pc);
-    println!("  Pc Lower: {:.2e}", assessment.collision_probability.pc_lower);
-    println!("  Pc Upper: {:.2e}", assessment.collision_probability.pc_upper);
+    println!(
+        "  Pc Lower: {:.2e}",
+        assessment.collision_probability.pc_lower
+    );
+    println!(
+        "  Pc Upper: {:.2e}",
+        assessment.collision_probability.pc_upper
+    );
     println!("  Method: {:?}", assessment.collision_probability.method);
-    println!("  Has Covariance: {}", assessment.collision_probability.has_covariance);
+    println!(
+        "  Has Covariance: {}",
+        assessment.collision_probability.has_covariance
+    );
 
     let risk_color = match assessment.risk_level {
         RiskLevel::Emergency => "red",
@@ -477,11 +546,14 @@ fn conjunction_demo() -> Result<()> {
 
     let risk_str = format!("{:?}", assessment.risk_level);
     println!("\n{}", "Risk Assessment:".cyan());
-    println!("  Level: {}", match risk_color {
-        "red" => risk_str.red().bold(),
-        "yellow" => risk_str.yellow().bold(),
-        _ => risk_str.green().bold(),
-    });
+    println!(
+        "  Level: {}",
+        match risk_color {
+            "red" => risk_str.red().bold(),
+            "yellow" => risk_str.yellow().bold(),
+            _ => risk_str.green().bold(),
+        }
+    );
     println!("  Recommendation: {}", assessment.risk_level.description());
 
     Ok(())
@@ -489,7 +561,12 @@ fn conjunction_demo() -> Result<()> {
 
 /// Ingest TLE data into Holochain
 async fn ingest_data(source: &str, limit: usize, conductor_url: &str, dry_run: bool) -> Result<()> {
-    println!("{}", format!("=== Ingesting {} data into Holochain ===", source).green().bold());
+    println!(
+        "{}",
+        format!("=== Ingesting {} data into Holochain ===", source)
+            .green()
+            .bold()
+    );
 
     // Collect TLEs based on source (using spawn_blocking for blocking HTTP calls)
     let source_owned = source.to_lowercase();
@@ -501,12 +578,16 @@ async fn ingest_data(source: &str, limit: usize, conductor_url: &str, dry_run: b
             "all" => {
                 let mut all = fetch_tles_for_ingest("CATNR=25544", 1)?;
                 all.extend(fetch_tles_for_ingest("GROUP=starlink", limit / 2)?);
-                all.extend(fetch_tles_for_ingest("GROUP=cosmos-1408-debris", limit / 2)?);
+                all.extend(fetch_tles_for_ingest(
+                    "GROUP=cosmos-1408-debris",
+                    limit / 2,
+                )?);
                 Ok(all)
             }
             _ => anyhow::bail!("Unknown source. Use 'iss', 'starlink', 'debris', or 'all'"),
         }
-    }).await??;
+    })
+    .await??;
 
     println!("\nFetched {} TLEs from CelesTrak", tles.len());
 
@@ -528,7 +609,7 @@ async fn ingest_data(source: &str, limit: usize, conductor_url: &str, dry_run: b
             norad_id: tle.norad_id,
             name: name.clone(),
             object_type: object_type.to_string(),
-            launch_date: None,  // Could parse from international designator
+            launch_date: None, // Could parse from international designator
             decay_date: None,
             owner_country: None,
             data_source: "CelesTrak".to_string(),
@@ -554,7 +635,7 @@ async fn ingest_data(source: &str, limit: usize, conductor_url: &str, dry_run: b
                     velocity_kms: [state.state.vx, state.state.vy, state.state.vz],
                     covariance: None,
                     reference_frame: "Teme".to_string(),
-                    quality: 0.9,  // CelesTrak data is generally good quality
+                    quality: 0.9, // CelesTrak data is generally good quality
                     source: "CelesTrak".to_string(),
                 });
             }
@@ -570,7 +651,10 @@ async fn ingest_data(source: &str, limit: usize, conductor_url: &str, dry_run: b
         println!("\n{}", "DRY RUN - Not sending to Holochain".yellow());
         println!("\nSample entries:");
         for obj in batch.objects().iter().take(3) {
-            println!("  - {} (NORAD {}): {}", obj.name, obj.norad_id, obj.object_type);
+            println!(
+                "  - {} (NORAD {}): {}",
+                obj.name, obj.norad_id, obj.object_type
+            );
         }
         return Ok(());
     }
@@ -592,7 +676,12 @@ async fn ingest_data(source: &str, limit: usize, conductor_url: &str, dry_run: b
 
 /// Export data to JSON file for offline ingestion
 fn export_data(source: &str, limit: usize, output: &str) -> Result<()> {
-    println!("{}", format!("=== Exporting {} data to {} ===", source, output).green().bold());
+    println!(
+        "{}",
+        format!("=== Exporting {} data to {} ===", source, output)
+            .green()
+            .bold()
+    );
 
     // Collect TLEs based on source
     let tles = match source.to_lowercase().as_str() {
@@ -602,10 +691,16 @@ fn export_data(source: &str, limit: usize, output: &str) -> Result<()> {
         "all" => {
             let mut all = fetch_tles_for_ingest("CATNR=25544", 1)?;
             all.extend(fetch_tles_for_ingest("GROUP=starlink", limit / 2)?);
-            all.extend(fetch_tles_for_ingest("GROUP=cosmos-1408-debris", limit / 2)?);
+            all.extend(fetch_tles_for_ingest(
+                "GROUP=cosmos-1408-debris",
+                limit / 2,
+            )?);
             all
         }
-        _ => anyhow::bail!("Unknown source: {}. Use 'iss', 'starlink', 'debris', or 'all'", source),
+        _ => anyhow::bail!(
+            "Unknown source: {}. Use 'iss', 'starlink', 'debris', or 'all'",
+            source
+        ),
     };
 
     println!("Fetched {} TLEs from CelesTrak", tles.len());
@@ -655,14 +750,15 @@ fn export_data(source: &str, limit: usize, output: &str) -> Result<()> {
         };
 
         let state_vector = if let Ok(propagator) = Propagator::from_tle(tle) {
-            propagator.propagate_to(Utc::now()).ok().map(|state| {
-                ExportStateVector {
+            propagator
+                .propagate_to(Utc::now())
+                .ok()
+                .map(|state| ExportStateVector {
                     epoch: Utc::now(),
                     position_km: [state.state.x, state.state.y, state.state.z],
                     velocity_kms: [state.state.vx, state.state.vy, state.state.vz],
                     reference_frame: "Teme".to_string(),
-                }
-            })
+                })
         } else {
             None
         };
@@ -690,7 +786,10 @@ fn export_data(source: &str, limit: usize, output: &str) -> Result<()> {
     let json = serde_json::to_string_pretty(&export)?;
     std::fs::write(output, &json)?;
 
-    println!("\n{}", format!("Exported {} objects to {}", export.count, output).green());
+    println!(
+        "\n{}",
+        format!("Exported {} objects to {}", export.count, output).green()
+    );
     println!("File size: {} bytes", json.len());
 
     Ok(())

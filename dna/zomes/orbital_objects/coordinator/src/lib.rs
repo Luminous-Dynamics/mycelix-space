@@ -7,8 +7,8 @@
 //! - Query catalog with link-based indexing
 
 use hdk::prelude::*;
+use mycelix_space_shared::{DataSourceType, QualityScore, SpaceTimestamp};
 use orbital_objects_integrity::*;
-use mycelix_space_shared::{SpaceTimestamp, QualityScore, DataSourceType};
 
 // ============================================================================
 // Constants for anchor paths
@@ -230,7 +230,9 @@ pub fn get_object(action_hash: ActionHash) -> ExternResult<Option<OrbitalObject>
                 .entry()
                 .to_app_option()
                 .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?
-                .ok_or(wasm_error!(WasmErrorInner::Guest("Entry not found".to_string())))?;
+                .ok_or(wasm_error!(WasmErrorInner::Guest(
+                    "Entry not found".to_string()
+                )))?;
             Ok(Some(object))
         }
         None => Ok(None),
@@ -350,12 +352,20 @@ pub fn get_latest_tle(norad_id: u32) -> ExternResult<Option<TleWithHash>> {
             if let Ok(epoch_micros) = epoch_str.parse::<i64>() {
                 match &latest {
                     None => {
-                        latest = Some((epoch_micros, ActionHash::try_from(link.target)
-                            .map_err(|_| wasm_error!(WasmErrorInner::Guest("Invalid hash".to_string())))?));
+                        latest = Some((
+                            epoch_micros,
+                            ActionHash::try_from(link.target).map_err(|_| {
+                                wasm_error!(WasmErrorInner::Guest("Invalid hash".to_string()))
+                            })?,
+                        ));
                     }
                     Some((current_max, _)) if epoch_micros > *current_max => {
-                        latest = Some((epoch_micros, ActionHash::try_from(link.target)
-                            .map_err(|_| wasm_error!(WasmErrorInner::Guest("Invalid hash".to_string())))?));
+                        latest = Some((
+                            epoch_micros,
+                            ActionHash::try_from(link.target).map_err(|_| {
+                                wasm_error!(WasmErrorInner::Guest("Invalid hash".to_string()))
+                            })?,
+                        ));
                     }
                     _ => {}
                 }
@@ -369,7 +379,9 @@ pub fn get_latest_tle(norad_id: u32) -> ExternResult<Option<TleWithHash>> {
                 .entry()
                 .to_app_option()
                 .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?
-                .ok_or(wasm_error!(WasmErrorInner::Guest("Entry not found".to_string())))?;
+                .ok_or(wasm_error!(WasmErrorInner::Guest(
+                    "Entry not found".to_string()
+                )))?;
 
             return Ok(Some(TleWithHash { action_hash, tle }));
         }
@@ -404,7 +416,9 @@ pub fn get_tle_history(input: GetTleHistoryInput) -> ExternResult<Vec<TleWithHas
                 .entry()
                 .to_app_option()
                 .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?
-                .ok_or(wasm_error!(WasmErrorInner::Guest("Entry not found".to_string())))?;
+                .ok_or(wasm_error!(WasmErrorInner::Guest(
+                    "Entry not found".to_string()
+                )))?;
 
             // Apply time filters
             if let Some(start) = &input.start_time {
@@ -455,7 +469,9 @@ pub fn get_operator_claims(norad_id: u32) -> ExternResult<Vec<OperatorClaimWithH
                 .entry()
                 .to_app_option()
                 .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?
-                .ok_or(wasm_error!(WasmErrorInner::Guest("Entry not found".to_string())))?;
+                .ok_or(wasm_error!(WasmErrorInner::Guest(
+                    "Entry not found".to_string()
+                )))?;
 
             claims.push(OperatorClaimWithHash { action_hash, claim });
         }
@@ -489,7 +505,9 @@ pub fn get_operator_objects(operator: AgentPubKey) -> ExternResult<Vec<OperatorC
                 .entry()
                 .to_app_option()
                 .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?
-                .ok_or(wasm_error!(WasmErrorInner::Guest("Entry not found".to_string())))?;
+                .ok_or(wasm_error!(WasmErrorInner::Guest(
+                    "Entry not found".to_string()
+                )))?;
 
             claims.push(OperatorClaimWithHash { action_hash, claim });
         }
@@ -515,9 +533,14 @@ pub fn get_object_metadata(norad_id: u32) -> ExternResult<Option<ObjectMetadataW
                 .entry()
                 .to_app_option()
                 .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?
-                .ok_or(wasm_error!(WasmErrorInner::Guest("Entry not found".to_string())))?;
+                .ok_or(wasm_error!(WasmErrorInner::Guest(
+                    "Entry not found".to_string()
+                )))?;
 
-            return Ok(Some(ObjectMetadataWithHash { action_hash, metadata }));
+            return Ok(Some(ObjectMetadataWithHash {
+                action_hash,
+                metadata,
+            }));
         }
     }
 
@@ -552,10 +575,7 @@ fn get_links_for_base(
 
     let query = LinkQuery::new(
         base,
-        LinkTypeFilter::single_type(
-            zome_info.id,
-            LinkType::from(link_type as u8),
-        ),
+        LinkTypeFilter::single_type(zome_info.id, LinkType::from(link_type as u8)),
     );
 
     let mut links = get_links(query, GetStrategy::Local)?;
@@ -582,17 +602,21 @@ fn extract_tle_epoch(line1: &str) -> ExternResult<SpaceTimestamp> {
     let epoch_str = epoch_str.trim();
 
     // Parse year (2 digits)
-    let year_2d: i32 = epoch_str[0..2].parse().map_err(|_| {
-        wasm_error!(WasmErrorInner::Guest("Cannot parse TLE year".to_string()))
-    })?;
+    let year_2d: i32 = epoch_str[0..2]
+        .parse()
+        .map_err(|_| wasm_error!(WasmErrorInner::Guest("Cannot parse TLE year".to_string())))?;
 
     // Y2K handling
-    let year = if year_2d < 57 { 2000 + year_2d } else { 1900 + year_2d };
+    let year = if year_2d < 57 {
+        2000 + year_2d
+    } else {
+        1900 + year_2d
+    };
 
     // Parse day of year (with fractional part)
-    let day_of_year: f64 = epoch_str[2..].parse().map_err(|_| {
-        wasm_error!(WasmErrorInner::Guest("Cannot parse TLE day".to_string()))
-    })?;
+    let day_of_year: f64 = epoch_str[2..]
+        .parse()
+        .map_err(|_| wasm_error!(WasmErrorInner::Guest("Cannot parse TLE day".to_string())))?;
 
     // Convert to Unix timestamp
     let jan1_days = days_since_epoch(year, 1, 1);

@@ -3,12 +3,11 @@
 //! Functions for managing conjunction events, CDMs, and avoidance maneuvers.
 //! Includes real-time alert signals for high-risk conjunctions.
 
-use hdk::prelude::*;
 use conjunctions_integrity::*;
+use hdk::prelude::*;
 use mycelix_space_shared::{
-    SpaceTimestamp, ConjunctionDataMessage, ConjunctionAssessment,
-    ConjunctionAlert, ManeuverAlert, SpaceSignal, AlertType, AlertPriority,
-    ManeuverType as SharedManeuverType,
+    AlertPriority, AlertType, ConjunctionAlert, ConjunctionAssessment, ConjunctionDataMessage,
+    ManeuverAlert, ManeuverType as SharedManeuverType, SpaceSignal, SpaceTimestamp,
 };
 
 /// Signal types for this zome (used by Holochain's emit_signal)
@@ -17,15 +16,9 @@ pub enum ConjunctionSignal {
     /// Alert for conjunction detection or risk change
     Alert(SpaceSignal),
     /// CDM update notification
-    CdmUpdate {
-        event_id: String,
-        version: u32,
-    },
+    CdmUpdate { event_id: String, version: u32 },
     /// Maneuver announcement
-    ManeuverAnnounced {
-        event_id: String,
-        norad_id: u32,
-    },
+    ManeuverAnnounced { event_id: String, norad_id: u32 },
 }
 
 /// Risk level threshold for automatic alerts
@@ -72,14 +65,22 @@ pub struct CreateEventInput {
 #[hdk_extern]
 pub fn update_conjunction_risk(input: UpdateRiskInput) -> ExternResult<ActionHash> {
     // Get the current event
-    let record = get(input.event_hash.clone(), GetOptions::default())?
-        .ok_or(wasm_error!(WasmErrorInner::Guest("Conjunction event not found".to_string())))?;
+    let record = get(input.event_hash.clone(), GetOptions::default())?.ok_or(wasm_error!(
+        WasmErrorInner::Guest("Conjunction event not found".to_string())
+    ))?;
 
     let mut event: ConjunctionEvent = record
         .entry()
         .to_app_option()
-        .map_err(|e| wasm_error!(WasmErrorInner::Guest(format!("Failed to deserialize: {:?}", e))))?
-        .ok_or(wasm_error!(WasmErrorInner::Guest("Entry is not a ConjunctionEvent".to_string())))?;
+        .map_err(|e| {
+            wasm_error!(WasmErrorInner::Guest(format!(
+                "Failed to deserialize: {:?}",
+                e
+            )))
+        })?
+        .ok_or(wasm_error!(WasmErrorInner::Guest(
+            "Entry is not a ConjunctionEvent".to_string()
+        )))?;
 
     let previous_risk = event.risk_level;
 
@@ -168,7 +169,10 @@ pub fn announce_maneuver(input: AnnounceManeuverInput) -> ExternResult<ActionHas
         delta_v_ms: input.delta_v_ms,
         execution_time: input.burn_time.to_datetime(),
         generated_at: chrono::Utc::now(),
-        message: Some(format!("Avoidance maneuver announced for event {}", input.event_id)),
+        message: Some(format!(
+            "Avoidance maneuver announced for event {}",
+            input.event_id
+        )),
     };
 
     let signal = ConjunctionSignal::Alert(SpaceSignal::Maneuver(maneuver_alert));
@@ -190,14 +194,22 @@ pub struct AnnounceManeuverInput {
 #[hdk_extern]
 pub fn mark_maneuver_executed(input: ManeuverExecutedInput) -> ExternResult<ActionHash> {
     // Get the current maneuver
-    let record = get(input.maneuver_hash.clone(), GetOptions::default())?
-        .ok_or(wasm_error!(WasmErrorInner::Guest("Maneuver not found".to_string())))?;
+    let record = get(input.maneuver_hash.clone(), GetOptions::default())?.ok_or(wasm_error!(
+        WasmErrorInner::Guest("Maneuver not found".to_string())
+    ))?;
 
     let mut maneuver: AvoidanceManeuver = record
         .entry()
         .to_app_option()
-        .map_err(|e| wasm_error!(WasmErrorInner::Guest(format!("Failed to deserialize: {:?}", e))))?
-        .ok_or(wasm_error!(WasmErrorInner::Guest("Entry is not an AvoidanceManeuver".to_string())))?;
+        .map_err(|e| {
+            wasm_error!(WasmErrorInner::Guest(format!(
+                "Failed to deserialize: {:?}",
+                e
+            )))
+        })?
+        .ok_or(wasm_error!(WasmErrorInner::Guest(
+            "Entry is not an AvoidanceManeuver".to_string()
+        )))?;
 
     // Update status
     maneuver.status = ManeuverStatus::Executed;
@@ -272,7 +284,10 @@ fn emit_conjunction_alert(event: &ConjunctionEvent) -> ExternResult<()> {
 }
 
 /// Emit a risk escalation alert signal
-fn emit_risk_escalation_alert(event: &ConjunctionEvent, previous_risk: RiskLevel) -> ExternResult<()> {
+fn emit_risk_escalation_alert(
+    event: &ConjunctionEvent,
+    previous_risk: RiskLevel,
+) -> ExternResult<()> {
     let assessment = ConjunctionAssessment {
         primary_norad_id: event.primary_norad_id,
         secondary_norad_id: event.secondary_norad_id,
@@ -286,10 +301,7 @@ fn emit_risk_escalation_alert(event: &ConjunctionEvent, previous_risk: RiskLevel
         screening_volume_km: 5.0,
     };
 
-    let alert = ConjunctionAlert::risk_escalation(
-        &assessment,
-        convert_risk_level(previous_risk),
-    );
+    let alert = ConjunctionAlert::risk_escalation(&assessment, convert_risk_level(previous_risk));
     let signal = ConjunctionSignal::Alert(SpaceSignal::Conjunction(alert));
     emit_signal(signal)?;
 

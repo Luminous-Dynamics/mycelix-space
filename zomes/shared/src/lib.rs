@@ -11,9 +11,9 @@
 //! - Validation helpers
 //! - Trust and reputation primitives
 
+use chrono::{DateTime, Utc};
 use hdi::prelude::*;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 /// NORAD Catalog Number - unique identifier for tracked space objects
@@ -24,9 +24,10 @@ pub struct NoradId(pub u32);
 impl NoradId {
     pub fn new(id: u32) -> ExternResult<Self> {
         if id == 0 || id > 999999 {
-            return Err(wasm_error!(WasmErrorInner::Guest(
-                format!("Invalid NORAD ID: {}. Must be 1-999999", id)
-            )));
+            return Err(wasm_error!(WasmErrorInner::Guest(format!(
+                "Invalid NORAD ID: {}. Must be 1-999999",
+                id
+            ))));
         }
         Ok(Self(id))
     }
@@ -59,8 +60,7 @@ impl SpaceTimestamp {
     }
 
     pub fn to_datetime(&self) -> DateTime<Utc> {
-        DateTime::from_timestamp_micros(self.micros)
-            .unwrap_or_else(|| Utc::now())
+        DateTime::from_timestamp_micros(self.micros).unwrap_or_else(|| Utc::now())
     }
 
     /// Age in seconds from now
@@ -114,20 +114,13 @@ pub enum DataSourceType {
     },
 
     /// Space-based observation (from another satellite)
-    SpaceSensor {
-        observer_norad_id: NoradId,
-    },
+    SpaceSensor { observer_norad_id: NoradId },
 
     /// Operator-provided ephemeris (highest trust for own assets)
-    OperatorEphemeris {
-        operator: AgentPubKey,
-    },
+    OperatorEphemeris { operator: AgentPubKey },
 
     /// Fused from multiple sources in the network
-    NetworkFusion {
-        source_count: u32,
-        node_count: u32,
-    },
+    NetworkFusion { source_count: u32, node_count: u32 },
 }
 
 /// Ground sensor location
@@ -627,9 +620,15 @@ impl ConjunctionAlert {
     /// Create a new conjunction detected alert
     pub fn new_conjunction(assessment: &ConjunctionAssessment) -> Self {
         let recommendation = match assessment.risk_level {
-            RiskLevel::Emergency => Some("IMMEDIATE ACTION REQUIRED: Initiate collision avoidance maneuver".to_string()),
-            RiskLevel::High => Some("Prepare collision avoidance maneuver, monitor closely".to_string()),
-            RiskLevel::Medium => Some("Increase monitoring frequency, prepare contingency plans".to_string()),
+            RiskLevel::Emergency => {
+                Some("IMMEDIATE ACTION REQUIRED: Initiate collision avoidance maneuver".to_string())
+            }
+            RiskLevel::High => {
+                Some("Prepare collision avoidance maneuver, monitor closely".to_string())
+            }
+            RiskLevel::Medium => {
+                Some("Increase monitoring frequency, prepare contingency plans".to_string())
+            }
             RiskLevel::Low => Some("Continue monitoring, no immediate action required".to_string()),
             RiskLevel::Negligible => None,
         };
@@ -650,10 +649,7 @@ impl ConjunctionAlert {
     }
 
     /// Create a risk escalation alert
-    pub fn risk_escalation(
-        assessment: &ConjunctionAssessment,
-        previous_level: RiskLevel,
-    ) -> Self {
+    pub fn risk_escalation(assessment: &ConjunctionAssessment, previous_level: RiskLevel) -> Self {
         let mut alert = Self::new_conjunction(assessment);
         alert.alert_type = AlertType::RiskEscalation;
         alert.previous_risk_level = Some(previous_level);
@@ -783,7 +779,7 @@ mod tests {
 
     #[test]
     fn test_norad_id_validation() {
-        assert!(NoradId::new(25544).is_ok());  // ISS
+        assert!(NoradId::new(25544).is_ok()); // ISS
         assert!(NoradId::new(1).is_ok());
         assert!(NoradId::new(999999).is_ok());
         assert!(NoradId::new(0).is_err());
@@ -813,8 +809,8 @@ mod tests {
     fn test_unit_vector() {
         assert!(is_unit_vector(&[1.0, 0.0, 0.0], 0.01));
         assert!(is_unit_vector(&[0.0, 1.0, 0.0], 0.01));
-        assert!(is_unit_vector(&[0.577, 0.577, 0.577], 0.01));  // ~1/sqrt(3)
-        assert!(!is_unit_vector(&[1.0, 1.0, 0.0], 0.01));  // magnitude sqrt(2)
+        assert!(is_unit_vector(&[0.577, 0.577, 0.577], 0.01)); // ~1/sqrt(3)
+        assert!(!is_unit_vector(&[1.0, 1.0, 0.0], 0.01)); // magnitude sqrt(2)
     }
 
     #[test]
@@ -870,7 +866,8 @@ mod tests {
         };
 
         let json = serde_json::to_string(&obj).expect("Failed to serialize");
-        let parsed: OrbitalObjectEntry = serde_json::from_str(&json).expect("Failed to deserialize");
+        let parsed: OrbitalObjectEntry =
+            serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(parsed.norad_id, 25544);
         assert_eq!(parsed.name, "ISS (ZARYA)");
     }
@@ -879,8 +876,10 @@ mod tests {
     fn test_tle_data_serialization() {
         let tle = TleData {
             norad_id: 25544,
-            line1: "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997".to_string(),
-            line2: "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391424577".to_string(),
+            line1: "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997"
+                .to_string(),
+            line2: "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391424577"
+                .to_string(),
             epoch: Utc::now(),
             source: DataSourceSimple::SpaceTrack,
         };
@@ -907,7 +906,8 @@ mod tests {
         };
 
         let json = serde_json::to_string(&assessment).expect("Failed to serialize");
-        let parsed: ConjunctionAssessment = serde_json::from_str(&json).expect("Failed to deserialize");
+        let parsed: ConjunctionAssessment =
+            serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(parsed.primary_norad_id, 25544);
         assert_eq!(parsed.secondary_norad_id, 49863);
         assert_eq!(parsed.risk_level, RiskLevel::Medium);

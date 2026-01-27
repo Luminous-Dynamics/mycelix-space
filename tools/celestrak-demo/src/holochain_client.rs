@@ -40,11 +40,11 @@ impl Default for HolochainConfig {
 pub struct OrbitalObjectInput {
     pub norad_id: u32,
     pub name: String,
-    pub object_type: String,  // "Payload", "RocketBody", "Debris", "Unknown"
+    pub object_type: String, // "Payload", "RocketBody", "Debris", "Unknown"
     pub launch_date: Option<DateTime<Utc>>,
     pub decay_date: Option<DateTime<Utc>>,
     pub owner_country: Option<String>,
-    pub data_source: String,  // "SpaceTrack", "CelesTrak", "Operator", "Computed"
+    pub data_source: String, // "SpaceTrack", "CelesTrak", "Operator", "Computed"
     #[serde(default)]
     pub metadata: HashMap<String, String>,
 }
@@ -67,7 +67,7 @@ pub struct StateVectorInput {
     pub position_km: [f64; 3],
     pub velocity_kms: [f64; 3],
     pub covariance: Option<[f64; 21]>,
-    pub reference_frame: String,  // "Teme", "J2000", "Itrf", "Gcrf"
+    pub reference_frame: String, // "Teme", "J2000", "Itrf", "Gcrf"
     pub quality: f64,
     pub source: String,
 }
@@ -103,7 +103,10 @@ impl HolochainClient {
     pub async fn connect(&mut self) -> Result<()> {
         // In a real implementation, this would establish a WebSocket connection
         // For now, we'll use the holochain_client crate patterns
-        println!("Connecting to Holochain conductor at {}...", self.config.conductor_url);
+        println!(
+            "Connecting to Holochain conductor at {}...",
+            self.config.conductor_url
+        );
 
         // TODO: Implement real WebSocket connection
         // let client = WebsocketClient::connect(&self.config.conductor_url).await?;
@@ -124,7 +127,10 @@ impl HolochainClient {
             anyhow::bail!("Not connected to Holochain conductor");
         }
 
-        println!("Creating orbital object: NORAD {} - {}", input.norad_id, input.name);
+        println!(
+            "Creating orbital object: NORAD {} - {}",
+            input.norad_id, input.name
+        );
 
         // Simulate zome call
         // In real implementation:
@@ -156,7 +162,10 @@ impl HolochainClient {
             anyhow::bail!("Not connected to Holochain conductor");
         }
 
-        println!("Creating state vector for NORAD {} at {}", input.norad_id, input.epoch);
+        println!(
+            "Creating state vector for NORAD {} at {}",
+            input.norad_id, input.epoch
+        );
 
         Ok(ZomeCallResult {
             action_hash: format!("uhCkk-SV-SIMULATED-{}", input.norad_id),
@@ -165,7 +174,10 @@ impl HolochainClient {
     }
 
     /// Batch create orbital objects
-    pub async fn batch_create_objects(&self, objects: Vec<OrbitalObjectInput>) -> Result<Vec<ZomeCallResult>> {
+    pub async fn batch_create_objects(
+        &self,
+        objects: Vec<OrbitalObjectInput>,
+    ) -> Result<Vec<ZomeCallResult>> {
         let mut results = Vec::new();
         for obj in objects {
             results.push(self.create_orbital_object(obj).await?);
@@ -246,7 +258,9 @@ impl IngestionBatch {
                     report.action_hashes.push(result.action_hash);
                 }
                 Err(e) => {
-                    report.errors.push(format!("Failed to create object {}: {}", obj.norad_id, e));
+                    report
+                        .errors
+                        .push(format!("Failed to create object {}: {}", obj.norad_id, e));
                 }
             }
         }
@@ -259,7 +273,9 @@ impl IngestionBatch {
                     report.action_hashes.push(result.action_hash);
                 }
                 Err(e) => {
-                    report.errors.push(format!("Failed to create TLE {}: {}", tle.norad_id, e));
+                    report
+                        .errors
+                        .push(format!("Failed to create TLE {}: {}", tle.norad_id, e));
                 }
             }
         }
@@ -272,7 +288,10 @@ impl IngestionBatch {
                     report.action_hashes.push(result.action_hash);
                 }
                 Err(e) => {
-                    report.errors.push(format!("Failed to create state vector {}: {}", sv.norad_id, e));
+                    report.errors.push(format!(
+                        "Failed to create state vector {}: {}",
+                        sv.norad_id, e
+                    ));
                 }
             }
         }

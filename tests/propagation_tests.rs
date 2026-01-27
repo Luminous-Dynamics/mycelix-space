@@ -4,8 +4,8 @@
 
 use chrono::{Duration, Utc};
 use orbital_mechanics::{
+    propagator::{BatchPropagator, Propagator},
     tle::TwoLineElement,
-    propagator::{Propagator, BatchPropagator},
 };
 
 /// Sample ISS TLE for testing
@@ -32,11 +32,19 @@ fn test_propagation_at_epoch() {
 
     // At epoch, should be at approximately the right altitude
     let alt = state.state.altitude_km();
-    assert!(alt > 330.0 && alt < 460.0, "ISS altitude at epoch: {} km", alt);
+    assert!(
+        alt > 330.0 && alt < 460.0,
+        "ISS altitude at epoch: {} km",
+        alt
+    );
 
     // Speed should be approximately 7.6-7.8 km/s
     let speed = state.state.speed();
-    assert!(speed > 7.4 && speed < 8.0, "ISS speed at epoch: {} km/s", speed);
+    assert!(
+        speed > 7.4 && speed < 8.0,
+        "ISS speed at epoch: {} km/s",
+        speed
+    );
 }
 
 /// Test propagation forward in time
@@ -54,7 +62,11 @@ fn test_propagation_forward() {
 
     // Should still be in valid orbit
     let alt = state.state.altitude_km();
-    assert!(alt > 330.0 && alt < 460.0, "Altitude after 1 hour: {} km", alt);
+    assert!(
+        alt > 330.0 && alt < 460.0,
+        "Altitude after 1 hour: {} km",
+        alt
+    );
 }
 
 /// Test propagation backward in time
@@ -83,7 +95,11 @@ fn test_propagation_period() {
 
     // Position should be similar after one orbit (within ~100km due to perturbations)
     let distance = state_epoch.state.distance_to(&state_period.state);
-    assert!(distance < 100.0, "After one orbit, distance from start: {} km", distance);
+    assert!(
+        distance < 100.0,
+        "After one orbit, distance from start: {} km",
+        distance
+    );
 }
 
 /// Test ephemeris generation
@@ -130,9 +146,7 @@ fn test_propagation_bounds() {
 #[test]
 fn test_custom_bounds() {
     let tle = TwoLineElement::parse(ISS_TLE).unwrap();
-    let prop = Propagator::from_tle(&tle)
-        .unwrap()
-        .with_bounds(60.0, 14.0); // 60 days forward, 14 days backward
+    let prop = Propagator::from_tle(&tle).unwrap().with_bounds(60.0, 14.0); // 60 days forward, 14 days backward
 
     // Should now succeed with extended bounds
     let future = tle.epoch + Duration::days(45);
@@ -190,7 +204,11 @@ fn test_state_distance() {
     let distance = state1.state.distance_to(&state2.state);
 
     // ISS travels at ~7.6 km/s, so 1 minute = ~456 km
-    assert!(distance > 400.0 && distance < 500.0, "Distance in 1 minute: {} km", distance);
+    assert!(
+        distance > 400.0 && distance < 500.0,
+        "Distance in 1 minute: {} km",
+        distance
+    );
 }
 
 /// Test relative velocity calculation
@@ -205,7 +223,11 @@ fn test_relative_velocity() {
     let rel_vel = state1.state.relative_velocity(&state2.state);
 
     // Same object at same time should have zero relative velocity
-    assert!(rel_vel < 0.001, "Relative velocity should be ~0: {} km/s", rel_vel);
+    assert!(
+        rel_vel < 0.001,
+        "Relative velocity should be ~0: {} km/s",
+        rel_vel
+    );
 }
 
 /// Test propagate_minutes convenience method
@@ -249,11 +271,19 @@ fn test_quality_estimation() {
 
     // At epoch, quality should be high
     let state_epoch = prop.propagate_minutes(0.0).unwrap();
-    assert!(state_epoch.quality > 0.9, "Quality at epoch: {}", state_epoch.quality);
+    assert!(
+        state_epoch.quality > 0.9,
+        "Quality at epoch: {}",
+        state_epoch.quality
+    );
 
     // Quality should degrade with time from epoch
     let state_7d = prop.propagate_minutes(7.0 * 24.0 * 60.0).unwrap(); // 7 days
-    assert!(state_7d.quality < state_epoch.quality, "Quality at 7 days: {}", state_7d.quality);
+    assert!(
+        state_7d.quality < state_epoch.quality,
+        "Quality at 7 days: {}",
+        state_7d.quality
+    );
 }
 
 /// Test NORAD ID preservation

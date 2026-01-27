@@ -3,8 +3,8 @@
 //! Functions for automated space traffic negotiation.
 
 use hdk::prelude::*;
-use traffic_control_integrity::*;
 use mycelix_space_shared::SpaceTimestamp;
+use traffic_control_integrity::*;
 
 /// Initiate a negotiation session
 #[hdk_extern]
@@ -108,7 +108,7 @@ pub fn accept_proposal(input: AcceptProposalInput) -> ExternResult<ActionHash> {
         session_id: input.session_id,
         accepted_proposal: input.proposal_hash,
         primary_signature: Some(agent.clone()),
-        secondary_signature: None,  // Other party needs to sign
+        secondary_signature: None, // Other party needs to sign
         agreed_at: SpaceTimestamp::now(),
         execution_deadline: input.execution_deadline,
     };

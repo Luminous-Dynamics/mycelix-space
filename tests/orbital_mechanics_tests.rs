@@ -59,7 +59,11 @@ fn test_orbital_parameters() {
     // ISS altitude should be in LEO range (340-460 km for synthetic TLE)
     let perigee = tle.perigee_km();
     let apogee = tle.apogee_km();
-    assert!(perigee > 340.0 && perigee < 460.0, "Perigee: {} km", perigee);
+    assert!(
+        perigee > 340.0 && perigee < 460.0,
+        "Perigee: {} km",
+        perigee
+    );
     assert!(apogee > 340.0 && apogee < 460.0, "Apogee: {} km", apogee);
 }
 

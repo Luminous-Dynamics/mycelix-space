@@ -5,9 +5,9 @@
 
 use chrono::Utc;
 use orbital_mechanics::{
-    conjunction::{ConjunctionAnalyzer, RiskLevel, screen_catalog},
-    state::{OrbitalState, StateVector, DataSource},
+    conjunction::{screen_catalog, ConjunctionAnalyzer, RiskLevel},
     covariance::CovarianceMatrix,
+    state::{DataSource, OrbitalState, StateVector},
 };
 
 /// Test basic conjunction detection between two objects
@@ -17,18 +17,24 @@ fn test_conjunction_detection() {
 
     // Create two objects 1 km apart
     let primary = OrbitalState::new(
-        25544,  // ISS
+        25544, // ISS
         now,
         StateVector::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([0.5, 0.5, 0.5, 0.001, 0.001, 0.001]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        0.5, 0.5, 0.5, 0.001, 0.001, 0.001,
+    ]));
 
     let secondary = OrbitalState::new(
-        99999,  // Debris
+        99999, // Debris
         now,
         StateVector::new(7001.0, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([1.0, 1.0, 1.0, 0.002, 0.002, 0.002]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        1.0, 1.0, 1.0, 0.002, 0.002, 0.002,
+    ]));
 
     let analyzer = ConjunctionAnalyzer::new();
     let assessment = analyzer.assess(&primary, &secondary);
@@ -161,7 +167,10 @@ fn test_high_velocity_conjunction() {
         now,
         StateVector::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([0.5, 0.5, 0.5, 0.001, 0.001, 0.001]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        0.5, 0.5, 0.5, 0.001, 0.001, 0.001,
+    ]));
 
     // Retrograde orbit - opposite direction
     let secondary = OrbitalState::new(
@@ -169,22 +178,28 @@ fn test_high_velocity_conjunction() {
         now,
         StateVector::new(7000.5, 0.0, 0.0, 0.0, -7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([1.0, 1.0, 1.0, 0.002, 0.002, 0.002]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        1.0, 1.0, 1.0, 0.002, 0.002, 0.002,
+    ]));
 
     let analyzer = ConjunctionAnalyzer::new();
     let assessment = analyzer.assess(&primary, &secondary);
 
     // Relative velocity should be ~15 km/s (7.5 + 7.5)
-    assert!(assessment.relative_velocity_kms > 14.0,
-            "Relative velocity: {} km/s", assessment.relative_velocity_kms);
+    assert!(
+        assessment.relative_velocity_kms > 14.0,
+        "Relative velocity: {} km/s",
+        assessment.relative_velocity_kms
+    );
 }
 
 /// Test conjunction analyzer configuration
 #[test]
 fn test_analyzer_configuration() {
     let analyzer = ConjunctionAnalyzer::new()
-        .with_hbr(50.0)  // 50m hard body radius
-        .with_screening_threshold(10.0);  // 10km threshold
+        .with_hbr(50.0) // 50m hard body radius
+        .with_screening_threshold(10.0); // 10km threshold
 
     let now = Utc::now();
 
@@ -193,14 +208,20 @@ fn test_analyzer_configuration() {
         now,
         StateVector::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([0.5, 0.5, 0.5, 0.001, 0.001, 0.001]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        0.5, 0.5, 0.5, 0.001, 0.001, 0.001,
+    ]));
 
     let secondary = OrbitalState::new(
         99999,
         now,
         StateVector::new(7000.5, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([1.0, 1.0, 1.0, 0.002, 0.002, 0.002]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        1.0, 1.0, 1.0, 0.002, 0.002, 0.002,
+    ]));
 
     let assessment = analyzer.assess(&primary, &secondary);
 
@@ -231,14 +252,20 @@ fn test_assessment_fields() {
         now,
         StateVector::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([0.5, 0.5, 0.5, 0.001, 0.001, 0.001]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        0.5, 0.5, 0.5, 0.001, 0.001, 0.001,
+    ]));
 
     let secondary = OrbitalState::new(
         49863,
         now,
         StateVector::new(7000.2, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([1.0, 1.0, 1.0, 0.002, 0.002, 0.002]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        1.0, 1.0, 1.0, 0.002, 0.002, 0.002,
+    ]));
 
     let analyzer = ConjunctionAnalyzer::new().with_hbr(20.0);
     let assessment = analyzer.assess(&primary, &secondary);
@@ -264,22 +291,27 @@ fn test_very_close_approach() {
         now,
         StateVector::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([0.1, 0.1, 0.1, 0.0001, 0.0001, 0.0001]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        0.1, 0.1, 0.1, 0.0001, 0.0001, 0.0001,
+    ]));
 
     let secondary = OrbitalState::new(
         99999,
         now,
         StateVector::new(7000.1, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([0.1, 0.1, 0.1, 0.0001, 0.0001, 0.0001]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        0.1, 0.1, 0.1, 0.0001, 0.0001, 0.0001,
+    ]));
 
     let analyzer = ConjunctionAnalyzer::new().with_hbr(20.0);
     let assessment = analyzer.assess(&primary, &secondary);
 
     // Should have high Pc and high/emergency risk
     assert!(assessment.miss_distance_km < 0.2);
-    assert!(assessment.risk_level >= RiskLevel::High ||
-            assessment.collision_probability.pc > 1e-4);
+    assert!(assessment.risk_level >= RiskLevel::High || assessment.collision_probability.pc > 1e-4);
 }
 
 /// Test screening excludes self-conjunctions
@@ -330,8 +362,11 @@ fn test_miss_distance_precision() {
     let analyzer = ConjunctionAnalyzer::new();
     let assessment = analyzer.assess(&primary, &secondary);
 
-    assert!((assessment.miss_distance_km - 0.5).abs() < 0.001,
-            "Expected 0.5 km, got {}", assessment.miss_distance_km);
+    assert!(
+        (assessment.miss_distance_km - 0.5).abs() < 0.001,
+        "Expected 0.5 km, got {}",
+        assessment.miss_distance_km
+    );
 }
 
 /// Test relative velocity calculation
@@ -358,8 +393,11 @@ fn test_relative_velocity_same_direction() {
     let assessment = analyzer.assess(&primary, &secondary);
 
     // Relative velocity should be ~0
-    assert!(assessment.relative_velocity_kms < 0.01,
-            "Expected ~0 km/s, got {}", assessment.relative_velocity_kms);
+    assert!(
+        assessment.relative_velocity_kms < 0.01,
+        "Expected ~0 km/s, got {}",
+        assessment.relative_velocity_kms
+    );
 }
 
 /// Test Pc method selection
@@ -372,14 +410,20 @@ fn test_pc_method_with_covariance() {
         now,
         StateVector::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([0.5, 0.5, 0.5, 0.001, 0.001, 0.001]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        0.5, 0.5, 0.5, 0.001, 0.001, 0.001,
+    ]));
 
     let secondary = OrbitalState::new(
         99999,
         now,
         StateVector::new(7001.0, 0.0, 0.0, 0.0, 7.5, 0.0),
         DataSource::SpaceTrack,
-    ).with_covariance(CovarianceMatrix::diagonal([1.0, 1.0, 1.0, 0.002, 0.002, 0.002]));
+    )
+    .with_covariance(CovarianceMatrix::diagonal([
+        1.0, 1.0, 1.0, 0.002, 0.002, 0.002,
+    ]));
 
     let analyzer = ConjunctionAnalyzer::new();
     let assessment = analyzer.assess(&primary, &secondary);

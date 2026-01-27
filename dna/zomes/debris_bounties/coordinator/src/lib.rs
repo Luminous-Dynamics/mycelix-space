@@ -2,8 +2,8 @@
 //!
 //! Functions for the Kessler Cleanup Market.
 
-use hdk::prelude::*;
 use debris_bounties_integrity::*;
+use hdk::prelude::*;
 use mycelix_space_shared::SpaceTimestamp;
 
 /// Create a new debris bounty

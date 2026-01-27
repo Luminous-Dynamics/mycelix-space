@@ -19,11 +19,11 @@
 //! Typically 5-50 meters depending on object sizes.
 
 use chrono::{DateTime, Utc};
-use nalgebra::{Vector3, Matrix2};
+use nalgebra::{Matrix2, Vector3};
 use serde::{Deserialize, Serialize};
 
-use crate::state::{OrbitalState, StateVector};
 use crate::covariance::CovarianceMatrix;
+use crate::state::{OrbitalState, StateVector};
 
 /// Result of conjunction screening
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -150,8 +150,8 @@ pub struct ConjunctionAnalyzer {
 impl Default for ConjunctionAnalyzer {
     fn default() -> Self {
         Self {
-            default_hbr_m: 20.0,  // 20 meters combined radius
-            screening_threshold_km: 5.0,  // Screen for approaches within 5 km
+            default_hbr_m: 20.0,         // 20 meters combined radius
+            screening_threshold_km: 5.0, // Screen for approaches within 5 km
             tca_refinement_step_s: 1.0,  // 1-second refinement
         }
     }
@@ -184,12 +184,8 @@ impl ConjunctionAnalyzer {
         let relative_velocity = primary.state.relative_velocity(&secondary.state);
 
         // Calculate Pc
-        let collision_probability = self.calculate_pc(
-            primary,
-            secondary,
-            miss_distance,
-            self.default_hbr_m,
-        );
+        let collision_probability =
+            self.calculate_pc(primary, secondary, miss_distance, self.default_hbr_m);
 
         let risk_level = RiskLevel::from_pc(collision_probability.pc);
 
@@ -235,14 +231,12 @@ impl ConjunctionAnalyzer {
         }
 
         // Get combined covariance in encounter frame
-        let cov_primary = primary.covariance.as_ref().cloned()
-            .unwrap_or_default();
-        let cov_secondary = secondary.covariance.as_ref().cloned()
-            .unwrap_or_default();
+        let cov_primary = primary.covariance.as_ref().cloned().unwrap_or_default();
+        let cov_secondary = secondary.covariance.as_ref().cloned().unwrap_or_default();
 
         // Combined position covariance
-        let combined_pos_cov = cov_primary.position_covariance()
-            + cov_secondary.position_covariance();
+        let combined_pos_cov =
+            cov_primary.position_covariance() + cov_secondary.position_covariance();
 
         // Relative position (miss vector)
         let miss_vector = secondary.state.position() - primary.state.position();
@@ -251,11 +245,8 @@ impl ConjunctionAnalyzer {
         let rel_vel = secondary.state.velocity() - primary.state.velocity();
 
         // Project to 2D encounter plane (perpendicular to relative velocity)
-        let (projected_miss, cov_2d) = self.project_to_encounter_plane(
-            miss_vector,
-            rel_vel,
-            combined_pos_cov,
-        );
+        let (projected_miss, cov_2d) =
+            self.project_to_encounter_plane(miss_vector, rel_vel, combined_pos_cov);
 
         // Alfano's 2D Pc calculation
         let pc = self.alfano_2d_pc(projected_miss, cov_2d, hbr_km);
@@ -277,7 +268,7 @@ impl ConjunctionAnalyzer {
     fn pc_from_miss_distance(&self, miss_km: f64, hbr_km: f64) -> CollisionProbability {
         // Very rough approximation assuming typical LEO uncertainties
         // This should be used only as a screening metric
-        let assumed_sigma_km = 1.0;  // Assume 1 km 1-sigma position uncertainty
+        let assumed_sigma_km = 1.0; // Assume 1 km 1-sigma position uncertainty
 
         // Simple Gaussian approximation
         let x = miss_km / assumed_sigma_km;
@@ -285,7 +276,7 @@ impl ConjunctionAnalyzer {
 
         CollisionProbability {
             pc: pc.min(1.0),
-            pc_lower: pc / 100.0,  // Very uncertain
+            pc_lower: pc / 100.0, // Very uncertain
             pc_upper: (pc * 100.0).min(1.0),
             method: PcMethod::MissDistanceOnly,
             has_covariance: false,
@@ -313,17 +304,11 @@ impl ConjunctionAnalyzer {
         let u2 = v_hat.cross(&u1);
 
         // Project miss vector to encounter plane
-        let miss_2d = nalgebra::Vector2::new(
-            miss_vector.dot(&u1),
-            miss_vector.dot(&u2),
-        );
+        let miss_2d = nalgebra::Vector2::new(miss_vector.dot(&u1), miss_vector.dot(&u2));
 
         // Project covariance to encounter plane
         // C_2d = P * C_3d * P^T where P is 2x3 projection matrix
-        let proj = nalgebra::Matrix2x3::from_rows(&[
-            u1.transpose(),
-            u2.transpose(),
-        ]);
+        let proj = nalgebra::Matrix2x3::from_rows(&[u1.transpose(), u2.transpose()]);
 
         let cov_2d = proj * cov_3d * proj.transpose();
 
@@ -340,7 +325,7 @@ impl ConjunctionAnalyzer {
         // Eigendecomposition of covariance
         let det = cov_2d.determinant();
         if det <= 0.0 {
-            return 0.0;  // Invalid covariance
+            return 0.0; // Invalid covariance
         }
 
         let trace = cov_2d.trace();
@@ -410,8 +395,8 @@ mod tests {
 
     #[test]
     fn test_conjunction_assessment() {
-        use chrono::Utc;
         use crate::state::DataSource;
+        use chrono::Utc;
 
         let now = Utc::now();
 
@@ -421,14 +406,20 @@ mod tests {
             now,
             StateVector::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
             DataSource::SpaceTrack,
-        ).with_covariance(CovarianceMatrix::diagonal([0.5, 0.5, 0.5, 0.001, 0.001, 0.001]));
+        )
+        .with_covariance(CovarianceMatrix::diagonal([
+            0.5, 0.5, 0.5, 0.001, 0.001, 0.001,
+        ]));
 
         let secondary = OrbitalState::new(
             12345,
             now,
             StateVector::new(7001.0, 0.0, 0.0, 0.0, 7.5, 0.0),
             DataSource::SpaceTrack,
-        ).with_covariance(CovarianceMatrix::diagonal([0.5, 0.5, 0.5, 0.001, 0.001, 0.001]));
+        )
+        .with_covariance(CovarianceMatrix::diagonal([
+            0.5, 0.5, 0.5, 0.001, 0.001, 0.001,
+        ]));
 
         let analyzer = ConjunctionAnalyzer::new();
         let assessment = analyzer.assess(&primary, &secondary);
@@ -439,19 +430,21 @@ mod tests {
 
     #[test]
     fn test_screening() {
-        use chrono::Utc;
         use crate::state::DataSource;
+        use chrono::Utc;
 
         let now = Utc::now();
 
-        let objects: Vec<OrbitalState> = (0..5).map(|i| {
-            OrbitalState::new(
-                25544 + i,
-                now,
-                StateVector::new(7000.0 + i as f64, 0.0, 0.0, 0.0, 7.5, 0.0),
-                DataSource::SpaceTrack,
-            )
-        }).collect();
+        let objects: Vec<OrbitalState> = (0..5)
+            .map(|i| {
+                OrbitalState::new(
+                    25544 + i,
+                    now,
+                    StateVector::new(7000.0 + i as f64, 0.0, 0.0, 0.0, 7.5, 0.0),
+                    DataSource::SpaceTrack,
+                )
+            })
+            .collect();
 
         let conjunctions = screen_catalog(&objects[0..1], &objects, 2.0);
 

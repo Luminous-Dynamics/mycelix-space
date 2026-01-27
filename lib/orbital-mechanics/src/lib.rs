@@ -38,17 +38,20 @@
 //! └─────────────────────────────────────────────────────────────────┘
 //! ```
 
-pub mod tle;
-pub mod state;
-pub mod propagator;
-pub mod covariance;
+pub mod cdm;
 pub mod conjunction;
 pub mod coordinates;
-pub mod cdm;
+pub mod covariance;
+pub mod propagator;
+pub mod state;
+pub mod tle;
 
-pub use tle::{TwoLineElement, TleParseError};
-pub use state::{OrbitalState, StateVector};
-pub use propagator::{Propagator, PropagationError};
+pub use cdm::{
+    CdmBuilder, CdmCovariance, CdmObjectMetadata, CdmRefFrame, CdmStateVector,
+    ConjunctionDataMessage, Maneuverable,
+};
+pub use conjunction::{CollisionProbability, ConjunctionAssessment};
 pub use covariance::CovarianceMatrix;
-pub use conjunction::{ConjunctionAssessment, CollisionProbability};
-pub use cdm::{ConjunctionDataMessage, CdmBuilder, CdmObjectMetadata, CdmStateVector, CdmCovariance, CdmRefFrame, Maneuverable};
+pub use propagator::{PropagationError, Propagator};
+pub use state::{OrbitalState, StateVector};
+pub use tle::{TleParseError, TwoLineElement};

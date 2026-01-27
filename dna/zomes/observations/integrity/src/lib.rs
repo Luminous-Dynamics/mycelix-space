@@ -5,7 +5,7 @@
 //! conjunction analysis systems.
 
 use hdi::prelude::*;
-use mycelix_space_shared::{NoradId, SpaceTimestamp, QualityScore, DataSourceType, GroundLocation};
+use mycelix_space_shared::{DataSourceType, GroundLocation, NoradId, QualityScore, SpaceTimestamp};
 
 #[hdk_entry_types]
 #[unit_enum(UnitEntryTypes)]
@@ -178,13 +178,11 @@ pub fn genesis_self_check(_data: GenesisSelfCheckData) -> ExternResult<ValidateC
 pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
     match op.flattened::<EntryTypes, LinkTypes>()? {
         FlatOp::StoreEntry(store_entry) => match store_entry {
-            OpEntry::CreateEntry { app_entry, .. } => {
-                match app_entry {
-                    EntryTypes::Observation(obs) => validate_observation(&obs),
-                    EntryTypes::Sensor(sensor) => validate_sensor(&sensor),
-                    EntryTypes::ObservationBatch(batch) => validate_batch(&batch),
-                }
-            }
+            OpEntry::CreateEntry { app_entry, .. } => match app_entry {
+                EntryTypes::Observation(obs) => validate_observation(&obs),
+                EntryTypes::Sensor(sensor) => validate_sensor(&sensor),
+                EntryTypes::ObservationBatch(batch) => validate_batch(&batch),
+            },
             _ => Ok(ValidateCallbackResult::Valid),
         },
         _ => Ok(ValidateCallbackResult::Valid),
@@ -195,16 +193,17 @@ fn validate_observation(obs: &Observation) -> ExternResult<ValidateCallbackResul
     // NORAD ID if present must be valid
     if let Some(norad_id) = obs.norad_id {
         if norad_id == 0 || norad_id > 999999 {
-            return Ok(ValidateCallbackResult::Invalid(
-                format!("Invalid NORAD ID: {}", norad_id)
-            ));
+            return Ok(ValidateCallbackResult::Invalid(format!(
+                "Invalid NORAD ID: {}",
+                norad_id
+            )));
         }
     }
 
     // Sensor ID must not be empty
     if obs.sensor_id.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Sensor ID cannot be empty".to_string()
+            "Sensor ID cannot be empty".to_string(),
         ));
     }
 
@@ -214,13 +213,13 @@ fn validate_observation(obs: &Observation) -> ExternResult<ValidateCallbackResul
 fn validate_sensor(sensor: &Sensor) -> ExternResult<ValidateCallbackResult> {
     if sensor.sensor_id.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Sensor ID cannot be empty".to_string()
+            "Sensor ID cannot be empty".to_string(),
         ));
     }
 
     if sensor.name.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Sensor name cannot be empty".to_string()
+            "Sensor name cannot be empty".to_string(),
         ));
     }
 
@@ -230,13 +229,13 @@ fn validate_sensor(sensor: &Sensor) -> ExternResult<ValidateCallbackResult> {
 fn validate_batch(batch: &ObservationBatch) -> ExternResult<ValidateCallbackResult> {
     if batch.batch_id.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Batch ID cannot be empty".to_string()
+            "Batch ID cannot be empty".to_string(),
         ));
     }
 
     if batch.end_time.micros < batch.start_time.micros {
         return Ok(ValidateCallbackResult::Invalid(
-            "Batch end time cannot be before start time".to_string()
+            "Batch end time cannot be before start time".to_string(),
         ));
     }
 

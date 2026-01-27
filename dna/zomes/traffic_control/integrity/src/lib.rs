@@ -270,14 +270,12 @@ pub fn genesis_self_check(_data: GenesisSelfCheckData) -> ExternResult<ValidateC
 pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
     match op.flattened::<EntryTypes, LinkTypes>()? {
         FlatOp::StoreEntry(store_entry) => match store_entry {
-            OpEntry::CreateEntry { app_entry, .. } => {
-                match app_entry {
-                    EntryTypes::NegotiationSession(session) => validate_session(&session),
-                    EntryTypes::NegotiationPosition(pos) => validate_position(&pos),
-                    EntryTypes::ManeuverProposal(prop) => validate_proposal(&prop),
-                    EntryTypes::NegotiationAgreement(agr) => validate_agreement(&agr),
-                }
-            }
+            OpEntry::CreateEntry { app_entry, .. } => match app_entry {
+                EntryTypes::NegotiationSession(session) => validate_session(&session),
+                EntryTypes::NegotiationPosition(pos) => validate_position(&pos),
+                EntryTypes::ManeuverProposal(prop) => validate_proposal(&prop),
+                EntryTypes::NegotiationAgreement(agr) => validate_agreement(&agr),
+            },
             _ => Ok(ValidateCallbackResult::Valid),
         },
         _ => Ok(ValidateCallbackResult::Valid),
@@ -288,19 +286,19 @@ fn validate_session(session: &NegotiationSession) -> ExternResult<ValidateCallba
     // Both NORAD IDs must be valid
     if session.primary_norad_id == 0 || session.primary_norad_id > 999999 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Invalid primary NORAD ID".to_string()
+            "Invalid primary NORAD ID".to_string(),
         ));
     }
     if session.secondary_norad_id == 0 || session.secondary_norad_id > 999999 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Invalid secondary NORAD ID".to_string()
+            "Invalid secondary NORAD ID".to_string(),
         ));
     }
 
     // Operators must be different
     if session.primary_operator == session.secondary_operator {
         return Ok(ValidateCallbackResult::Invalid(
-            "Primary and secondary operators must be different".to_string()
+            "Primary and secondary operators must be different".to_string(),
         ));
     }
 
@@ -311,7 +309,7 @@ fn validate_position(pos: &NegotiationPosition) -> ExternResult<ValidateCallback
     // NORAD ID must be valid
     if pos.norad_id == 0 || pos.norad_id > 999999 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Invalid NORAD ID".to_string()
+            "Invalid NORAD ID".to_string(),
         ));
     }
 
@@ -322,7 +320,7 @@ fn validate_proposal(prop: &ManeuverProposal) -> ExternResult<ValidateCallbackRe
     // Delta-V must be positive
     if prop.delta_v_ms <= 0.0 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Delta-V must be positive".to_string()
+            "Delta-V must be positive".to_string(),
         ));
     }
 
@@ -330,20 +328,20 @@ fn validate_proposal(prop: &ManeuverProposal) -> ExternResult<ValidateCallbackRe
     let mag_sq: f64 = prop.direction.iter().map(|x| x * x).sum();
     if (mag_sq - 1.0).abs() > 0.01 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Direction must be a unit vector".to_string()
+            "Direction must be a unit vector".to_string(),
         ));
     }
 
     // Resulting values must be non-negative
     if prop.resulting_miss_km < 0.0 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Resulting miss distance cannot be negative".to_string()
+            "Resulting miss distance cannot be negative".to_string(),
         ));
     }
 
     if prop.resulting_pc < 0.0 || prop.resulting_pc > 1.0 {
         return Ok(ValidateCallbackResult::Invalid(
-            "Resulting Pc must be between 0 and 1".to_string()
+            "Resulting Pc must be between 0 and 1".to_string(),
         ));
     }
 

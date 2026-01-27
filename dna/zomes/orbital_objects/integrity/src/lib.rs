@@ -5,9 +5,7 @@
 //! tracked space objects (satellites, debris, rocket bodies).
 
 use hdi::prelude::*;
-use mycelix_space_shared::{
-    NoradId, SpaceTimestamp, QualityScore, DataSourceType, TrustLevel,
-};
+use mycelix_space_shared::{DataSourceType, NoradId, QualityScore, SpaceTimestamp, TrustLevel};
 
 /// Entry types for the orbital objects DNA
 #[hdk_entry_types]
@@ -212,12 +210,10 @@ pub fn genesis_self_check(_data: GenesisSelfCheckData) -> ExternResult<ValidateC
 pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
     match op.flattened::<EntryTypes, LinkTypes>()? {
         FlatOp::StoreEntry(store_entry) => match store_entry {
-            OpEntry::CreateEntry { app_entry, action } => {
-                validate_create_entry(app_entry, action)
-            }
-            OpEntry::UpdateEntry { app_entry, action, .. } => {
-                validate_update_entry(app_entry, action)
-            }
+            OpEntry::CreateEntry { app_entry, action } => validate_create_entry(app_entry, action),
+            OpEntry::UpdateEntry {
+                app_entry, action, ..
+            } => validate_update_entry(app_entry, action),
             _ => Ok(ValidateCallbackResult::Valid),
         },
         FlatOp::RegisterCreateLink {
@@ -276,25 +272,27 @@ fn validate_update_entry(
 fn validate_orbital_object(obj: &OrbitalObject) -> ExternResult<ValidateCallbackResult> {
     // NORAD ID must be valid (1-999999)
     if obj.norad_id == 0 || obj.norad_id > 999999 {
-        return Ok(ValidateCallbackResult::Invalid(
-            format!("Invalid NORAD ID: {}. Must be 1-999999", obj.norad_id)
-        ));
+        return Ok(ValidateCallbackResult::Invalid(format!(
+            "Invalid NORAD ID: {}. Must be 1-999999",
+            obj.norad_id
+        )));
     }
 
     // International designator format: YYYY-NNNA (year-launch_number-piece)
     if !obj.intl_designator.is_empty() {
         let parts: Vec<&str> = obj.intl_designator.split('-').collect();
         if parts.len() != 2 && parts.len() != 3 {
-            return Ok(ValidateCallbackResult::Invalid(
-                format!("Invalid international designator format: {}", obj.intl_designator)
-            ));
+            return Ok(ValidateCallbackResult::Invalid(format!(
+                "Invalid international designator format: {}",
+                obj.intl_designator
+            )));
         }
     }
 
     // Name must not be empty
     if obj.name.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Object name cannot be empty".to_string()
+            "Object name cannot be empty".to_string(),
         ));
     }
 
@@ -305,48 +303,51 @@ fn validate_orbital_object(obj: &OrbitalObject) -> ExternResult<ValidateCallback
 fn validate_tle_record(tle: &TleRecord) -> ExternResult<ValidateCallbackResult> {
     // NORAD ID must be valid
     if tle.norad_id == 0 || tle.norad_id > 999999 {
-        return Ok(ValidateCallbackResult::Invalid(
-            format!("Invalid NORAD ID: {}", tle.norad_id)
-        ));
+        return Ok(ValidateCallbackResult::Invalid(format!(
+            "Invalid NORAD ID: {}",
+            tle.norad_id
+        )));
     }
 
     // Line lengths must be exactly 69 characters
     if tle.line1.len() != 69 {
-        return Ok(ValidateCallbackResult::Invalid(
-            format!("TLE line 1 must be 69 characters, got {}", tle.line1.len())
-        ));
+        return Ok(ValidateCallbackResult::Invalid(format!(
+            "TLE line 1 must be 69 characters, got {}",
+            tle.line1.len()
+        )));
     }
 
     if tle.line2.len() != 69 {
-        return Ok(ValidateCallbackResult::Invalid(
-            format!("TLE line 2 must be 69 characters, got {}", tle.line2.len())
-        ));
+        return Ok(ValidateCallbackResult::Invalid(format!(
+            "TLE line 2 must be 69 characters, got {}",
+            tle.line2.len()
+        )));
     }
 
     // Line 1 must start with "1"
     if !tle.line1.starts_with('1') {
         return Ok(ValidateCallbackResult::Invalid(
-            "TLE line 1 must start with '1'".to_string()
+            "TLE line 1 must start with '1'".to_string(),
         ));
     }
 
     // Line 2 must start with "2"
     if !tle.line2.starts_with('2') {
         return Ok(ValidateCallbackResult::Invalid(
-            "TLE line 2 must start with '2'".to_string()
+            "TLE line 2 must start with '2'".to_string(),
         ));
     }
 
     // Validate checksums
     if !validate_tle_checksum(&tle.line1) {
         return Ok(ValidateCallbackResult::Invalid(
-            "TLE line 1 checksum invalid".to_string()
+            "TLE line 1 checksum invalid".to_string(),
         ));
     }
 
     if !validate_tle_checksum(&tle.line2) {
         return Ok(ValidateCallbackResult::Invalid(
-            "TLE line 2 checksum invalid".to_string()
+            "TLE line 2 checksum invalid".to_string(),
         ));
     }
 
@@ -355,7 +356,9 @@ fn validate_tle_record(tle: &TleRecord) -> ExternResult<ValidateCallbackResult> 
 
 /// Validate TLE checksum (modulo 10 of sum of digits, '-' counts as 1)
 fn validate_tle_checksum(line: &str) -> bool {
-    let expected = line.chars().last()
+    let expected = line
+        .chars()
+        .last()
         .and_then(|c| c.to_digit(10))
         .unwrap_or(0);
 
@@ -375,15 +378,16 @@ fn validate_tle_checksum(line: &str) -> bool {
 fn validate_operator_claim(claim: &OperatorClaim) -> ExternResult<ValidateCallbackResult> {
     // NORAD ID must be valid
     if claim.norad_id == 0 || claim.norad_id > 999999 {
-        return Ok(ValidateCallbackResult::Invalid(
-            format!("Invalid NORAD ID: {}", claim.norad_id)
-        ));
+        return Ok(ValidateCallbackResult::Invalid(format!(
+            "Invalid NORAD ID: {}",
+            claim.norad_id
+        )));
     }
 
     // Organization name must not be empty
     if claim.organization.trim().is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
-            "Organization name cannot be empty".to_string()
+            "Organization name cannot be empty".to_string(),
         ));
     }
 
@@ -394,16 +398,17 @@ fn validate_operator_claim(claim: &OperatorClaim) -> ExternResult<ValidateCallba
 fn validate_object_metadata(meta: &ObjectMetadata) -> ExternResult<ValidateCallbackResult> {
     // NORAD ID must be valid
     if meta.norad_id == 0 || meta.norad_id > 999999 {
-        return Ok(ValidateCallbackResult::Invalid(
-            format!("Invalid NORAD ID: {}", meta.norad_id)
-        ));
+        return Ok(ValidateCallbackResult::Invalid(format!(
+            "Invalid NORAD ID: {}",
+            meta.norad_id
+        )));
     }
 
     // Physical values must be positive if present
     if let Some(rcs) = meta.rcs_m2 {
         if rcs <= 0.0 {
             return Ok(ValidateCallbackResult::Invalid(
-                "RCS must be positive".to_string()
+                "RCS must be positive".to_string(),
             ));
         }
     }
@@ -411,7 +416,7 @@ fn validate_object_metadata(meta: &ObjectMetadata) -> ExternResult<ValidateCallb
     if let Some(mass) = meta.mass_kg {
         if mass <= 0.0 {
             return Ok(ValidateCallbackResult::Invalid(
-                "Mass must be positive".to_string()
+                "Mass must be positive".to_string(),
             ));
         }
     }
@@ -419,7 +424,7 @@ fn validate_object_metadata(meta: &ObjectMetadata) -> ExternResult<ValidateCallb
     if let Some(hbr) = meta.hard_body_radius_m {
         if hbr <= 0.0 {
             return Ok(ValidateCallbackResult::Invalid(
-                "Hard body radius must be positive".to_string()
+                "Hard body radius must be positive".to_string(),
             ));
         }
     }

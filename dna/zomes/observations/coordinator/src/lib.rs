@@ -3,8 +3,8 @@
 //! Functions for submitting and querying sensor observations.
 
 use hdk::prelude::*;
+use mycelix_space_shared::{GroundLocation, QualityScore, SpaceTimestamp};
 use observations_integrity::*;
-use mycelix_space_shared::{SpaceTimestamp, QualityScore, GroundLocation};
 
 /// Submit an observation
 #[hdk_extern]
