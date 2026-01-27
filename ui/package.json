@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@holochain/client": "^0.18.0",
-    "cesium": "^1.114.0"
+    "cesium": "^1.114.0",
+    "satellite.js": "^5.0.0"
   },
   "type": "module"
 }
