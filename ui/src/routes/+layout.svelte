@@ -1,5 +1,7 @@
 <script lang="ts">
 	import '../app.css';
+	import { page } from '$app/stores';
+	import ConnectionStatus from '$lib/components/ConnectionStatus.svelte';
 </script>
 
 <div class="app">
@@ -24,20 +26,13 @@
 			</a></li>
 		</ul>
 
-		<div class="connection-status">
-			<span class="status-dot" class:connected={true}></span>
-			<span>Holochain: Connected</span>
-		</div>
+		<ConnectionStatus />
 	</nav>
 
 	<main class="content">
 		<slot />
 	</main>
 </div>
-
-<script context="module" lang="ts">
-	import { page } from '$app/stores';
-</script>
 
 <style>
 	.app {
@@ -111,27 +106,6 @@
 
 	.icon {
 		font-size: 1.25rem;
-	}
-
-	.connection-status {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.75rem;
-		font-size: 0.8rem;
-		color: #888;
-		border-top: 1px solid #2a2a3a;
-	}
-
-	.status-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		background: #ff4444;
-	}
-
-	.status-dot.connected {
-		background: #44ff88;
 	}
 
 	.content {

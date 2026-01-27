@@ -5,9 +5,10 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
 
-    # Holochain development environment - use holonix for full tooling
-    holochain = {
-      url = "github:holochain/holochain?ref=holochain-0.4.1";
+    # Holonix - official Holochain development environment
+    holonix = {
+      url = "github:holochain/holonix?ref=main";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     rust-overlay = {
@@ -16,7 +17,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, holochain, rust-overlay }:
+  outputs = { self, nixpkgs, flake-utils, holonix, rust-overlay }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
@@ -29,71 +30,42 @@
           targets = [ "wasm32-unknown-unknown" ];
         };
 
-        # Get holochain's devShell for full tooling (hc, holochain, lair-keystore)
-        holochainDevShell = holochain.devShells.${system}.default or null;
-
       in
       {
-        # Development shell with Holochain tools from upstream
-        devShells.default = if holochainDevShell != null then
-          pkgs.mkShell {
-            inputsFrom = [ holochainDevShell ];
-            buildInputs = with pkgs; [
-              # Additional tools
-              cargo-watch
-              cargo-expand
-            ];
-            shellHook = ''
-              echo "=== Mycelix Space Development Environment ==="
-              echo ""
-              echo "Rust: $(rustc --version 2>/dev/null || echo 'from holochain')"
-              echo "Cargo: $(cargo --version 2>/dev/null || echo 'from holochain')"
-              if command -v hc &> /dev/null; then
-                echo "Holochain CLI: $(hc --version 2>/dev/null || echo 'available')"
-              fi
-              echo ""
-              echo "Commands:"
-              echo "  ./scripts/build-happ.sh  - Build WASM and package hApp"
-              echo "  cargo check --workspace  - Check all code"
-              echo "  cargo test --workspace   - Run tests"
-              echo ""
-            '';
-          }
-        else
-          # Fallback shell without holochain tools
-          pkgs.mkShell {
-            buildInputs = with pkgs; [
-              rustToolchain
-              cargo-watch
-              cargo-expand
-              pkg-config
-              openssl
-            ];
-            shellHook = ''
-              echo "=== Mycelix Space Development Environment (No Holochain) ==="
-              echo ""
-              echo "Rust: $(rustc --version)"
-              echo "Cargo: $(cargo --version)"
-              echo ""
-              echo "WARNING: Holochain tools not available."
-              echo "WASM builds will work, but DNA/hApp packaging requires hc."
-              echo ""
-              echo "To get full Holochain tools, use:"
-              echo "  nix develop .#holonix"
-              echo ""
-            '';
-            RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
-          };
-
-        # Alternative shell using holochain's holonix directly
-        devShells.holonix = if holochainDevShell != null then holochainDevShell else
-          pkgs.mkShell {
-            buildInputs = [ pkgs.coreutils ];
-            shellHook = ''
-              echo "ERROR: Holochain devShell not available for this system"
-              exit 1
-            '';
-          };
+        # Development shell with Holochain tools from holonix
+        devShells.default = pkgs.mkShell {
+          inputsFrom = [
+            holonix.devShells.${system}.default
+          ];
+          buildInputs = with pkgs; [
+            # Additional tools
+            cargo-watch
+            cargo-expand
+            nodejs_20
+            nodePackages.npm
+          ];
+          shellHook = ''
+            echo "=== Mycelix Space Development Environment ==="
+            echo ""
+            echo "Rust: $(rustc --version 2>/dev/null || echo 'checking...')"
+            if command -v hc &> /dev/null; then
+              echo "Holochain CLI: $(hc --version 2>/dev/null || echo 'available')"
+            else
+              echo "Holochain CLI: not available"
+            fi
+            echo ""
+            echo "Commands:"
+            echo "  ./scripts/build-happ.sh    - Build WASM and package hApp"
+            echo "  hc sandbox generate        - Create test sandbox"
+            echo "  hc sandbox run             - Run sandbox conductor"
+            echo "  cargo check --workspace    - Check all code"
+            echo "  cargo test --workspace     - Run tests"
+            echo ""
+            echo "UI Development:"
+            echo "  cd ui && npm install && npm run dev"
+            echo ""
+          '';
+        };
 
         # Rust-only shell (faster to enter, for pure Rust development)
         devShells.rust = pkgs.mkShell {
@@ -108,11 +80,33 @@
             echo "=== Mycelix Space Rust Development ==="
             echo "Rust: $(rustc --version)"
             echo ""
+            echo "Note: This shell doesn't include Holochain CLI."
+            echo "Use 'nix develop' for full Holochain tooling."
+            echo ""
           '';
           RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
         };
 
-        # Package the orbital-mechanics library (non-Holochain, can be used standalone)
+        # UI development shell (Node.js only)
+        devShells.ui = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            nodejs_20
+            nodePackages.npm
+          ];
+          shellHook = ''
+            echo "=== Mycelix Space UI Development ==="
+            echo "Node: $(node --version)"
+            echo "npm: $(npm --version)"
+            echo ""
+            echo "Commands:"
+            echo "  cd ui && npm install"
+            echo "  npm run dev    - Start dev server"
+            echo "  npm run build  - Production build"
+            echo ""
+          '';
+        };
+
+        # Package the orbital-mechanics library
         packages.orbital-mechanics = pkgs.rustPlatform.buildRustPackage {
           pname = "orbital-mechanics";
           version = "0.1.0";
