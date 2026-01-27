@@ -4,6 +4,34 @@
 
 A Holochain-based peer-to-peer network for tracking orbital objects, predicting conjunctions, and coordinating space traffic without relying on any single nation's Space Force.
 
+![Space Traffic Control Dashboard](docs/dashboard-preview.png)
+
+## Quick Start
+
+### Run the Demo UI (No Holochain Required)
+
+```bash
+cd ui
+npm install
+npm run dev
+# Open http://localhost:5173
+```
+
+The UI works standalone with demo data and real-time SGP4 propagation.
+
+### Full Stack (With Holochain)
+
+```bash
+# Enter development environment
+nix develop
+
+# Build and run sandbox with hApp
+./scripts/sandbox-setup.sh
+
+# In another terminal, run UI
+cd ui && npm install && npm run dev
+```
+
 ## Vision
 
 Transform space situational awareness from a government monopoly into a global commons, enabling:
@@ -12,146 +40,197 @@ Transform space situational awareness from a government monopoly into a global c
 - Markets for debris removal (Kessler bounties)
 - Automated traffic negotiation between operators
 
+## Space Traffic Control Dashboard
+
+A real-time web interface for monitoring orbital objects and conjunction threats.
+
+### Features
+- **3D Live Map**: CesiumJS globe with real-time satellite positions
+- **SGP4 Propagation**: TLEs propagated to current positions every second
+- **Conjunction Monitoring**: Risk-based filtering and CDM generation
+- **Object Browser**: Search 20,000+ tracked objects
+- **Debris Bounties**: Crowdfunded cleanup incentives
+
+### Tech Stack
+- **Frontend**: SvelteKit + TypeScript
+- **3D Visualization**: CesiumJS
+- **Orbital Math**: satellite.js (SGP4/SDP4)
+- **Backend**: Holochain (optional - works offline with demo data)
+- **Data**: CelesTrak public TLE feeds
+
 ## Architecture
 
 ```
 mycelix-space/
-├── lib/orbital-mechanics/     # Core orbital mechanics (no Holochain deps)
+├── ui/                        # Space Traffic Control Dashboard
+│   ├── src/lib/orbital/       # SGP4 propagation, CelesTrak fetcher
+│   ├── src/lib/holochain/     # Conductor client wrapper
+│   └── src/routes/            # Dashboard pages
+│
+├── lib/orbital-mechanics/     # Core orbital mechanics (Rust)
 │   ├── tle.rs                 # TLE parsing and validation
 │   ├── state.rs               # State vectors with covariance
-│   ├── covariance.rs          # 6x6 uncertainty matrices
 │   ├── propagator.rs          # SGP4/SDP4 orbital propagation
-│   ├── conjunction.rs         # Collision probability analysis
-│   └── coordinates.rs         # Frame transformations (TEME, ECI, ECEF, geodetic)
+│   └── conjunction.rs         # Collision probability (Pc)
 │
-├── zomes/shared/              # Shared types across all DNAs
-│   └── lib.rs                 # NoradId, SpaceTimestamp, TrustLevel, CDM types
+├── zomes/                     # Holochain DNA Zomes
+│   ├── orbital_objects/       # Catalog of tracked objects
+│   ├── observations/          # Sensor data ingestion
+│   ├── conjunctions/          # Collision prediction & CDMs
+│   ├── debris_bounties/       # Kessler cleanup market
+│   └── traffic_control/       # Automated negotiation
 │
-└── dna/zomes/                 # Holochain DNA Zomes
-    ├── orbital_objects/       # Catalog of tracked objects
-    ├── observations/          # Sensor data ingestion
-    ├── conjunctions/          # Collision prediction & CDMs
-    ├── debris_bounties/       # Kessler cleanup market
-    └── traffic_control/       # Automated negotiation
+├── tools/celestrak-demo/      # Data pipeline from CelesTrak
+│
+├── tests/
+│   ├── sweettest/             # Multi-agent integration tests
+│   └── integration/           # Rust integration tests
+│
+└── scripts/
+    ├── build-happ.sh          # Package DNA and hApp
+    └── sandbox-setup.sh       # Quick-start Holochain sandbox
 ```
 
 ## Key Features
 
-### 1. Orbital Object Catalog
-Track satellites, debris, and rocket bodies with decentralized consensus.
-- TLE submission and validation
-- Operator claims and verification
-- Object metadata (RCS, mass, HBR)
+### 1. Real-Time Orbital Tracking
+Track satellites using SGP4 propagation from TLE data.
+- Live position updates every second
+- Orbital path visualization
+- Velocity and altitude display
 
-### 2. Sensor Observations
-Ingest data from ground and space-based sensors.
-- Angles-only (optical)
-- Radar range/range-rate
-- Full state vectors with covariance
-
-### 3. Conjunction Analysis
-Calculate collision probabilities with proper uncertainty handling.
+### 2. Conjunction Analysis
+Calculate collision probabilities with proper uncertainty.
 - Covariance propagation
 - 2D Alfano Pc calculation
-- Conjunction Data Messages (CDMs)
+- CCSDS-standard CDM generation
+- Risk-based alerting (Emergency/High/Medium/Low)
+
+### 3. Decentralized Catalog
+Holochain-based distributed ledger for orbital data.
+- No single point of failure
+- Operator-submitted TLEs
+- Trust-weighted data fusion
+- Cryptographic verification
 
 ### 4. Debris Bounties (Kessler Cleanup Market)
 Crowdfunded incentives for debris removal.
 - Post bounties on threatening debris
-- Aggregate funding from multiple parties
-- Verified removal and payout
+- Track funding progress
+- Multiple contributor support
 
-### 5. Automated Traffic Control
-AI-mediated negotiation between operators.
-- Capability and preference exchange
-- Maneuver proposal generation
-- Cryptographic agreement signing
+## Development
 
-## Why Covariance Matters
+### Prerequisites
 
-**This network tracks "probability clouds", not points.**
+- **Node.js 18+**: For UI development
+- **Rust**: For zome development
+- **Nix** (optional): For reproducible environment with Holochain tools
 
-Every orbital state includes a 6x6 covariance matrix representing uncertainty. This enables:
-- Meaningful collision probability (miss distance alone is meaningless)
-- Proper conjunction screening (filter by statistical significance)
-- Trust-weighted data fusion (lower uncertainty = higher weight)
-- Zero-knowledge proofs (prove properties without revealing orbits)
-
-## Building
+### Development Shells
 
 ```bash
-# Check the library (no Holochain)
-cargo check -p orbital-mechanics
+# Full environment with Holochain CLI
+nix develop
 
-# Run tests
+# Rust-only (faster, no Holochain)
+nix develop .#rust
+
+# UI-only (Node.js)
+nix develop .#ui
+```
+
+### Running Tests
+
+```bash
+# Rust unit tests
 cargo test --workspace
 
+# Integration tests (113 tests)
+cargo test --workspace -- --test-threads=1
+
+# Sweettest (requires Holochain)
+# cargo test -p sweettest
+```
+
+### Building
+
+```bash
 # Build WASM zomes
 cargo build --release --target wasm32-unknown-unknown
 
-# Package DNA and hApp (requires Holochain CLI)
+# Package hApp (requires hc CLI)
 ./scripts/build-happ.sh
 
-# Or manually:
-hc dna pack dna -o workdir/dna/mycelix_space.dna
-hc app pack dna -o workdir/happ/mycelix_space.happ
+# Build UI
+cd ui && npm run build
 ```
 
-### Requirements
+## Data Sources
 
-- Rust (stable)
-- `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`
-- Holochain CLI (`hc`): Install via Nix or from [holochain releases](https://github.com/holochain/holochain/releases)
+### CelesTrak Integration
+Fetch real orbital data directly in the browser or via the Rust pipeline.
+
+```typescript
+// In browser (via UI)
+import { fetchTLEs, CATALOG_GROUPS } from '$lib/orbital/celestrak';
+const stations = await fetchTLEs(CATALOG_GROUPS.STATIONS);
+```
+
+```bash
+# Via Rust tool
+cargo run -p celestrak-demo -- fetch --source active --limit 100
+```
+
+### Supported Catalogs
+- Space Stations (ISS, Tiangong, etc.)
+- Starlink Constellation (~6,000 satellites)
+- OneWeb Constellation
+- GPS/GLONASS/Galileo
+- Weather Satellites
+- Debris fields (Cosmos 2251, Fengyun 1C, Iridium 33)
 
 ## Development Status
 
 - [x] Orbital mechanics library (complete)
 - [x] TLE parsing with checksum validation
 - [x] State vectors with covariance
-- [x] SGP4 propagation wrapper
+- [x] SGP4 propagation
 - [x] Conjunction probability calculation
-- [x] Coordinate transformations
-- [x] CDM generation (CCSDS standard)
-- [x] Shared zome types
-- [x] Orbital objects zomes (integrity + coordinator)
-- [x] Observations zomes
-- [x] Conjunctions zomes with real-time alerts
-- [x] Debris bounties zomes
-- [x] Traffic control zomes
-- [x] DNA packaging
-- [x] hApp packaging
-- [x] Integration tests (113 passing)
-- [x] CelesTrak data ingestion pipeline
-- [ ] Web UI
-- [ ] Sweettest multi-agent tests
-
-## Tools
-
-### celestrak-demo
-Fetch orbital data from CelesTrak and optionally ingest into Holochain.
-
-```bash
-# Fetch ISS TLE
-cargo run -p celestrak-demo -- fetch --source iss
-
-# Fetch active satellites
-cargo run -p celestrak-demo -- fetch --source active --limit 100
-
-# Dry-run ingestion (no conductor needed)
-cargo run -p celestrak-demo -- ingest --source stations --dry-run
-```
-
-## License
-
-MIT
+- [x] CCSDS CDM generation
+- [x] All 5 Holochain zomes
+- [x] DNA/hApp packaging
+- [x] 113 integration tests passing
+- [x] **Space Traffic Control Dashboard**
+- [x] **Real-time SGP4 visualization**
+- [x] **CelesTrak data integration**
+- [x] Sweettest multi-agent tests
+- [ ] Production Holochain deployment
+- [ ] Voice-activated queries
+- [ ] Mobile app
 
 ## Contributing
 
 Contributions welcome! Please open an issue or PR.
 
+### Areas of Interest
+- Additional data sources (Space-Track, LeoLabs)
+- Improved conjunction algorithms
+- Mobile/tablet UI optimization
+- Voice interface integration
+- Additional language support
+
+## License
+
+MIT
+
 ## Related Projects
 
-Part of the [Mycelix](https://github.com/Luminous-Dynamics) ecosystem of decentralized applications.
+Part of the [Luminous Dynamics](https://github.com/Luminous-Dynamics) ecosystem.
+
+- **Mycelix Network**: P2P infrastructure
+- **Terra Atlas**: Energy investment platform
+- **Luminous Nix**: NixOS natural language interface
 
 ---
 
