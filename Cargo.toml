@@ -7,8 +7,11 @@ members = [
     # Tools
     "tools/celestrak-demo",
 
-    # Integration tests
+    # Integration tests (unit/serialization)
     "tests",
+
+    # Sweettest integration tests (multi-agent)
+    "tests/sweettest",
 
     # Shared zome utilities
     "zomes/shared",

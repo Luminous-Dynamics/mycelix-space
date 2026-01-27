@@ -1,0 +1,37 @@
+[package]
+name = "mycelix-space-sweettest"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Note: Sweettest requires a running Holochain conductor
+# These tests are designed for the Holochain 0.6.x series
+
+[dev-dependencies]
+# Holochain testing framework
+# Use holochain crate with test_utils feature for sweettest
+holochain = { version = "0.6", features = ["test_utils"] }
+
+# Shared types
+mycelix-space-shared = { path = "../../zomes/shared" }
+
+# Async runtime
+tokio = { version = "1", features = ["full", "test-util"] }
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+[[test]]
+name = "multi_agent"
+path = "multi_agent.rs"
+harness = false
+
+[[test]]
+name = "conjunction_workflow"
+path = "conjunction_workflow.rs"
+harness = false
